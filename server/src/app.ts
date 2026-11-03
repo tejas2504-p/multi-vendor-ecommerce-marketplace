@@ -1,0 +1,64 @@
+import express, { Application, Request, Response } from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import morgan from 'morgan';
+import { env } from './config/env.config';
+import { healthRoutes } from './routes/health.routes';
+import { v1Router } from './routes/v1';
+import { notFoundMiddleware } from './middlewares/notFound.middleware';
+import { errorMiddleware } from './middlewares/error.middleware';
+
+export const createApp = (): Application => {
+  const app = express();
+
+  // Security Headers
+  app.use(helmet());
+
+  // CORS Configuration
+  app.use(
+    cors({
+      origin: env.CLIENT_URL,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    })
+  );
+
+  // Request Body Parsing
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(cookieParser());
+
+  // HTTP Request Logging
+  if (env.NODE_ENV !== 'test') {
+    app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
+  }
+
+  // Root welcome endpoint
+  app.get('/', (_req: Request, res: Response) => {
+    res.json({
+      success: true,
+      name: 'Multi-Vendor E-Commerce Marketplace API',
+      version: '1.0.0',
+      status: 'online',
+      endpoints: {
+        health: '/api/health',
+        v1: '/api/v1',
+      },
+    });
+  });
+
+  // Health check endpoints (available at both /api/health and /api/v1/health)
+  app.use('/api/health', healthRoutes);
+  app.use('/api/v1/health', healthRoutes);
+
+  // Mount v1 master router
+  app.use('/api/v1', v1Router);
+
+  // 404 Handler & Centralized Error Middleware
+  app.use(notFoundMiddleware);
+  app.use(errorMiddleware);
+
+  return app;
+};

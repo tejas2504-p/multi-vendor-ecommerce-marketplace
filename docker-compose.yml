@@ -1,0 +1,53 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: marketplace-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: marketplace
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - marketplace-net
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: marketplace-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks:
+      - marketplace-net
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: marketplace-elasticsearch
+    restart: unless-stopped
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - marketplace-net
+
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+  es_data:
+    driver: local
+
+networks:
+  marketplace-net:
+    driver: bridge
+
