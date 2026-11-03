@@ -158,4 +158,3 @@ External service integrations are planned for subsequent phases and will be intr
 ## 📖 Architectural Documentation
 - Detailed system design, entity relationships, security architecture, and multi-vendor commission math are documented in **[`docs/architecture.md`](docs/architecture.md)**.
 - Complete REST API route specifications and payload formats are detailed in **[`docs/api-planning.md`](docs/api-planning.md)**.
-
