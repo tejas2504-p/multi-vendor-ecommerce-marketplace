@@ -95,3 +95,27 @@ export const updateVendorProfileSchema = z
 export type ApplyVendorInput = z.infer<typeof applyVendorSchema>;
 export type UpdateVendorProfileInput = z.infer<typeof updateVendorProfileSchema>;
 
+export const rejectVendorSchema = z
+  .object({
+    rejectionReason: z
+      .string({ required_error: 'Rejection reason is required' })
+      .trim()
+      .min(5, 'Rejection reason must be at least 5 characters')
+      .max(500, 'Rejection reason cannot exceed 500 characters'),
+  })
+  .strict({
+    message: 'Unknown fields are not permitted in rejection payload',
+  });
+
+export const adminVendorQuerySchema = z.object({
+  status: z.enum(['pending', 'approved', 'rejected']).optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+  sortBy: z.enum(['createdAt', 'storeName', 'status']).default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
+export type RejectVendorInput = z.infer<typeof rejectVendorSchema>;
+export type AdminVendorQueryInput = z.infer<typeof adminVendorQuerySchema>;
+
+

@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { createApp } from '../app';
 import { User } from '../models/user.model';
+import { VendorProfile } from '../models/vendorProfile.model';
 import { generateAccessToken, AUTH_COOKIE_NAME } from '../utils/token';
 
 async function runRbacTestSuite() {
@@ -51,6 +52,20 @@ async function runRbacTestSuite() {
       role: 'vendor',
       isActive: true,
     });
+    await VendorProfile.create({
+      userId: vendor1._id,
+      storeName: 'Bob Store 1',
+      businessEmail: 'bob@vendor1.com',
+      businessPhone: '+1-555-0101',
+      businessAddress: {
+        street: '123 Market St',
+        city: 'Metropolis',
+        state: 'NY',
+        postalCode: '10001',
+        country: 'USA',
+      },
+      status: 'approved',
+    });
     const vendor1Token = generateAccessToken({
       id: vendor1._id.toString(),
       email: vendor1.email,
@@ -64,6 +79,20 @@ async function runRbacTestSuite() {
       password: 'Password123!',
       role: 'vendor',
       isActive: true,
+    });
+    await VendorProfile.create({
+      userId: vendor2._id,
+      storeName: 'Charlie Store 2',
+      businessEmail: 'charlie@vendor2.com',
+      businessPhone: '+1-555-0102',
+      businessAddress: {
+        street: '456 Commerce Rd',
+        city: 'Metropolis',
+        state: 'NY',
+        postalCode: '10002',
+        country: 'USA',
+      },
+      status: 'approved',
     });
     const vendor2Token = generateAccessToken({
       id: vendor2._id.toString(),

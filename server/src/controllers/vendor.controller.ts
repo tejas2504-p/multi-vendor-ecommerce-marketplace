@@ -63,5 +63,44 @@ export class VendorController {
       next(error);
     }
   };
+
+  /**
+   * GET /api/vendor/dashboard
+   * Vendor dashboard with store info and placeholder zero metrics
+   */
+  static getDashboard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const dashboard = await VendorService.getVendorDashboard(req.user!.id);
+      ApiResponse.success(res, dashboard, 'Vendor dashboard retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /api/vendor/store
+   * Retrieve the authenticated vendor's store profile
+   */
+  static getStore = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const store = await VendorService.getVendorStore(req.user!.id);
+      ApiResponse.success(res, store, 'Vendor store profile retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PATCH /api/vendor/store
+   * Update the authenticated vendor's store details
+   */
+  static updateStore = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const updatedStore = await VendorService.updateVendorStore(req.user!.id, req.body);
+      ApiResponse.success(res, updatedStore, 'Vendor store updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 

@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middlewares/auth.middleware';
 import { authorize } from '../middlewares/rbac.middleware';
+import { validateBody } from '../middlewares/validate.middleware';
+import { rejectVendorSchema } from '../validators/vendor.validator';
+import { AdminVendorController } from '../controllers/adminVendor.controller';
 import { ApiResponse } from '../utils/apiResponse';
 
 const router = Router();
@@ -29,6 +32,51 @@ router.get(
       'Welcome to your Super-Admin Dashboard'
     );
   }
+);
+
+/**
+ * GET /api/admin/vendors
+ * List vendor applications (pending, approved, rejected)
+ */
+router.get(
+  '/vendors',
+  authenticate,
+  authorize('admin'),
+  AdminVendorController.listApplications
+);
+
+/**
+ * GET /api/admin/vendors/:id
+ * Retrieve specific vendor application details
+ */
+router.get(
+  '/vendors/:id',
+  authenticate,
+  authorize('admin'),
+  AdminVendorController.getApplicationById
+);
+
+/**
+ * PATCH /api/admin/vendors/:id/approve
+ * Approve pending vendor application and activate seller account
+ */
+router.patch(
+  '/vendors/:id/approve',
+  authenticate,
+  authorize('admin'),
+  AdminVendorController.approveApplication
+);
+
+/**
+ * PATCH /api/admin/vendors/:id/reject
+ * Reject pending vendor application with feedback reason
+ */
+router.patch(
+  '/vendors/:id/reject',
+  authenticate,
+  authorize('admin'),
+  validateBody(rejectVendorSchema),
+  AdminVendorController.rejectApplication
 );
 
 export const adminRoutes = router;

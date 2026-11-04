@@ -1,35 +1,47 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middlewares/auth.middleware';
 import { authorize } from '../middlewares/rbac.middleware';
+import { requireApprovedVendor } from '../middlewares/vendor.middleware';
 import { authorizeOwnership } from '../middlewares/ownership.middleware';
+import { validateBody } from '../middlewares/validate.middleware';
+import { updateVendorProfileSchema } from '../validators/vendor.validator';
+import { VendorController } from '../controllers/vendor.controller';
 import { ApiResponse } from '../utils/apiResponse';
 
 const router = Router();
 
 /**
  * GET /api/vendor/dashboard
- * Protected: Requires authenticated user with 'vendor' role
+ * Protected: Requires authenticated user with approved 'vendor' status
  */
 router.get(
   '/dashboard',
   authenticate,
-  authorize('vendor'),
-  (req: Request, res: Response) => {
-    ApiResponse.success(
-      res,
-      {
-        user: req.user,
-        portal: 'Vendor Management Hub',
-        accessibleFeatures: [
-          'Store Profile Management',
-          'Product Catalog & Inventory',
-          'Sub-Order Fulfillment',
-          'Escrow & Payout Statements',
-        ],
-      },
-      'Welcome to your Vendor Dashboard'
-    );
-  }
+  requireApprovedVendor,
+  VendorController.getDashboard
+);
+
+/**
+ * GET /api/vendor/store
+ * Protected: Retrieve approved vendor's own store profile
+ */
+router.get(
+  '/store',
+  authenticate,
+  requireApprovedVendor,
+  VendorController.getStore
+);
+
+/**
+ * PATCH /api/vendor/store
+ * Protected: Update approved vendor's own store details
+ */
+router.patch(
+  '/store',
+  authenticate,
+  requireApprovedVendor,
+  validateBody(updateVendorProfileSchema),
+  VendorController.updateStore
 );
 
 /**
@@ -55,4 +67,3 @@ router.get(
 );
 
 export const vendorRoutes = router;
-

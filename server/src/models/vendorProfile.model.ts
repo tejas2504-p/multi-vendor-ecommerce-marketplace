@@ -21,6 +21,8 @@ export interface IVendorProfile {
   businessAddress: IBusinessAddress;
   status: VendorApplicationStatus;
   rejectionReason?: string;
+  reviewedBy?: Types.ObjectId;
+  reviewedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -127,6 +129,15 @@ const vendorProfileSchema = new Schema<IVendorProfile, VendorProfileModel>(
     rejectionReason: {
       type: String,
       trim: true,
+      default: undefined,
+    },
+    reviewedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: undefined,
+    },
+    reviewedAt: {
+      type: Date,
       default: undefined,
     },
   },

@@ -5,3 +5,4 @@ export * from './auth.middleware';
 export * from './rateLimiter.middleware';
 export * from './rbac.middleware';
 export * from './ownership.middleware';
+export * from './vendor.middleware';

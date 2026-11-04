@@ -212,35 +212,78 @@ Each merchant store is backed by a `VendorProfile` document linked 1:1 to their 
 
 ---
 
+## 🏛️ Phase 3B: Admin Vendor Approval & Vendor Dashboard
+
+Phase 3B provides full administrative governance over vendor onboarding applications, atomic promotion of customer accounts to vendors, and dedicated dashboards for approved store owners.
+
+### 1. Administrative Approval Workflow & Finite State Machine
+- **Application Queue**: Platform administrators inspect pending, approved, and rejected applications with filtering, sorting, and pagination.
+- **Approval (`PATCH /api/admin/vendors/:id/approve`)**:
+  - Can only transition applications from `pending` to `approved`.
+  - Atomically updates `VendorProfile.status = 'approved'` and `User.role = 'vendor'` via MongoDB transactions (with safe two-phase compensation on standalone deployments).
+  - Records `reviewedBy` (admin user ID) and `reviewedAt` timestamp.
+  - Prevents repeated approval attempts (`409 Conflict`).
+- **Rejection (`PATCH /api/admin/vendors/:id/reject`)**:
+  - Transitions `pending` applications to `rejected`.
+  - Requires a validated `rejectionReason` (5–500 chars).
+  - Preserves applicant's user role as `customer`.
+  - Prevents illegal state transitions (e.g. rejecting an approved vendor returns `400 Bad Request`).
+
+### 2. Vendor Dashboard & Store Management
+- **Guarded Access (`requireApprovedVendor`)**: Verified server-side on every request. Stale JWT tokens cannot bypass database status checks:
+  - Role must be `'vendor'`.
+  - `VendorProfile.status` must be `'approved'`.
+- **Dashboard Telemetry (`GET /api/vendor/dashboard`)**:
+  - Returns authenticated store identity and verified contact details.
+  - Returns placeholder metrics initialized to zero (`productsCount`, `totalOrders`, `totalSales`, `netEarnings`, etc.) ready for Phase 4 and 5 real-time query aggregation.
+- **Store Profile Management (`GET /api/vendor/store`, `PATCH /api/vendor/store`)**:
+  - Allows approved merchants to update their public brand description, contact phone, and fulfillment address while strictly preventing modifications to approval status, roles, or commission rates.
+
+### 3. Endpoints Implemented in Phase 3B
+
+| Method | Endpoint | Access Role | Description |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/admin/vendors` | `admin` | List vendor applications with status filtering, pagination, and sorting. |
+| `GET` | `/api/admin/vendors/:id` | `admin` | Retrieve detailed vendor application and applicant information. |
+| `PATCH` | `/api/admin/vendors/:id/approve` | `admin` | Atomically approve vendor application and activate merchant account. |
+| `PATCH` | `/api/admin/vendors/:id/reject` | `admin` | Reject pending application with required feedback reason. |
+| `GET` | `/api/vendor/dashboard` | `vendor` (Approved) | Retrieve vendor dashboard with store profile and metric placeholders. |
+| `GET` | `/api/vendor/store` | `vendor` (Approved) | Retrieve approved vendor's own store settings. |
+| `PATCH` | `/api/vendor/store` | `vendor` (Approved) | Update approved vendor store information. |
+
+---
+
 ## 🧪 Automated Testing
 
-Phase 2A, Phase 2B, and Phase 3A include fully automated integration test suites executed with `mongodb-memory-server` and `supertest` (35 total tests):
+Phase 2A, Phase 2B, Phase 3A, and Phase 3B include fully automated integration test suites executed with `mongodb-memory-server` and `supertest` (**50 total tests, 100% pass rate**):
 
 ```bash
-# Run all test suites:
+# Run all test suites across the monorepo:
 npm run test
 
-# Or run individually:
-npm run test:auth      # Phase 2A: Registration, Login, Token, Cookies (10 tests)
+# Or run individual test suites:
+npm run test:auth      # Phase 2A: Authentication, Tokens, Cookies (10 tests)
 npm run test:rbac      # Phase 2B: RBAC, Route Guards, Ownership (11 tests)
 npm run test:vendor    # Phase 3A: Vendor Onboarding, Status, Application Guards (14 tests)
+npm run test:approval  # Phase 3B: Admin Approval, Dashboard, State Transitions (15 tests)
 ```
 
-### Verified Vendor Onboarding Test Suite (14 Tests)
-1. `POST /api/vendors/apply` $\rightarrow$ Customer successfully applies; status is `pending` and role remains `customer` (`201 Created`).
-2. `POST /api/vendors/apply` $\rightarrow$ Unauthenticated request rejected (`401 Unauthorized`).
-3. `POST /api/vendors/apply` $\rightarrow$ Duplicate application for the same account blocked (`409 Conflict`).
-4. `POST /api/vendors/apply` $\rightarrow$ Duplicate store name by another applicant blocked (`409 Conflict`).
-5. `POST /api/vendors/apply` $\rightarrow$ Invalid business email rejected (`422 Validation Error`).
-6. `POST /api/vendors/apply` $\rightarrow$ Missing required fields rejected (`422 Validation Error`).
-7. `GET /api/vendors/me` $\rightarrow$ Applicant retrieves own profile (`200 OK`).
-8. `GET /api/vendors/status` $\rightarrow$ Applicant retrieves application status (`200 OK`).
-9. `PATCH /api/vendors/me` with `status: 'approved'` $\rightarrow$ Self-approval modification blocked (`422 Validation Error`).
-10. `PATCH /api/vendors/me` with `role: 'vendor'` $\rightarrow$ Role escalation attempt blocked (`422 Validation Error`).
-11. `GET /api/vendors/me` without application $\rightarrow$ Non-applicant receives `404 Not Found`.
-12. `GET /api/vendors/status` without application $\rightarrow$ Non-applicant receives `404 Not Found`.
-13. `PATCH /api/vendors/me` $\rightarrow$ Permitted store fields successfully updated (`200 OK`).
-14. `POST /api/vendors/apply` $\rightarrow$ Non-customer (Admin) application attempt rejected (`400 Bad Request`).
+### Verified Admin Approval Test Suite (15 Tests)
+1. `GET /api/admin/vendors?status=pending` $\rightarrow$ Admin successfully lists filtered applications (`200 OK`).
+2. `GET /api/admin/vendors` $\rightarrow$ Customer blocked from listing applications (`403 Forbidden`).
+3. `PATCH /api/admin/vendors/:id/approve` $\rightarrow$ Non-admin blocked from approval (`403 Forbidden`).
+4. `PATCH /api/admin/vendors/:id/approve` $\rightarrow$ Admin successfully approves pending vendor (`200 OK`).
+5. Role promotion verification $\rightarrow$ User role atomically upgraded to `'vendor'` in MongoDB.
+6. `PATCH /api/admin/vendors/:id/approve` $\rightarrow$ Duplicate approval blocked (`409 Conflict`).
+7. `PATCH /api/admin/vendors/:id/reject` $\rightarrow$ Admin rejects application with reason (`200 OK`).
+8. Role preservation verification $\rightarrow$ Rejected applicant remains a `'customer'`.
+9. `GET /api/vendor/dashboard` $\rightarrow$ Approved vendor retrieves store data and initial zero metrics (`200 OK`).
+10. `GET /api/vendor/dashboard` $\rightarrow$ Pending / unapproved applicant blocked (`403 Forbidden`).
+11. `PATCH /api/vendor/store` $\rightarrow$ Approved vendor updates store description & contact (`200 OK`).
+12. Unauthenticated requests $\rightarrow$ Blocked with `401 Unauthorized`.
+13. Unauthorized role requests $\rightarrow$ Blocked with `403 Forbidden`.
+14. Malformed application IDs $\rightarrow$ Safely rejected (`400 Bad Request`).
+15. Illegal state transitions $\rightarrow$ Rejecting an approved vendor blocked (`400 Bad Request`).
 
 ---
 

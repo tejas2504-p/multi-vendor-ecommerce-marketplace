@@ -11,7 +11,8 @@
     "test:auth": "tsx src/tests/runAuthTests.ts",
     "test:rbac": "tsx src/tests/runRbacTests.ts",
     "test:vendor": "tsx src/tests/runVendorOnboardingTests.ts",
-    "test": "tsx src/tests/runAuthTests.ts && tsx src/tests/runRbacTests.ts && tsx src/tests/runVendorOnboardingTests.ts"
+    "test:approval": "tsx src/tests/runAdminVendorApprovalTests.ts",
+    "test": "tsx src/tests/runAuthTests.ts && tsx src/tests/runRbacTests.ts && tsx src/tests/runVendorOnboardingTests.ts && tsx src/tests/runAdminVendorApprovalTests.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.540.0",
