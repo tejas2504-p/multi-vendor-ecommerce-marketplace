@@ -157,3 +157,4 @@ export const VendorProfile = model<IVendorProfile, VendorProfileModel>(
   'VendorProfile',
   vendorProfileSchema
 );
+

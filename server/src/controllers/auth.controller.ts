@@ -17,7 +17,7 @@ export class AuthController {
 
       ApiResponse.created(
         res,
-        { user },
+        { user, token },
         'Account registered successfully'
       );
     } catch (error) {
@@ -38,7 +38,7 @@ export class AuthController {
 
       ApiResponse.success(
         res,
-        { user },
+        { user, token },
         'Login successful'
       );
     } catch (error) {

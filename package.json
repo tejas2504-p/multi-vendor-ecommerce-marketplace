@@ -14,6 +14,7 @@
     "start:server": "npm run start --workspace=server",
     "test:auth": "npm run test:auth --workspace=server",
     "test:rbac": "npm run test:rbac --workspace=server",
+    "test:vendor": "npm run test:vendor --workspace=server",
     "test": "npm run test --workspace=server",
     "build:server": "npm run build --workspace=server",
     "build:client": "npm run build --workspace=client",

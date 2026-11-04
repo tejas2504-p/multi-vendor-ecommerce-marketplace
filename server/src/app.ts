@@ -8,6 +8,7 @@ import { healthRoutes } from './routes/health.routes';
 import { authRoutes } from './routes/auth.routes';
 import { customerRoutes } from './routes/customer.routes';
 import { vendorRoutes } from './routes/vendor.routes';
+import { vendorProfileRoutes } from './routes/vendorProfile.routes';
 import { adminRoutes } from './routes/admin.routes';
 import { v1Router } from './routes/v1';
 import { notFoundMiddleware } from './middlewares/notFound.middleware';
@@ -68,6 +69,8 @@ export const createApp = (): Application => {
   app.use('/customer', customerRoutes);
   app.use('/api/vendor', vendorRoutes);
   app.use('/vendor', vendorRoutes);
+  app.use('/api/vendors', vendorProfileRoutes);
+  app.use('/vendors', vendorProfileRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/admin', adminRoutes);
 

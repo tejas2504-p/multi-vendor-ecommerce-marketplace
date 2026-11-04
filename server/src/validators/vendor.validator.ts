@@ -94,3 +94,4 @@ export const updateVendorProfileSchema = z
 
 export type ApplyVendorInput = z.infer<typeof applyVendorSchema>;
 export type UpdateVendorProfileInput = z.infer<typeof updateVendorProfileSchema>;
+

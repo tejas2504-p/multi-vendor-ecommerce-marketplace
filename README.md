@@ -173,31 +173,74 @@ Phase 2B enforces multi-layered authorization across the platform, strictly isol
 
 ---
 
+## 🏬 Phase 3A: Vendor Registration & Store Onboarding
+
+Phase 3A implements merchant registration and onboarding applications, enabling customer accounts to apply to become store sellers while keeping privileges safely governed until administrator approval.
+
+### 1. VendorProfile Schema Design
+Each merchant store is backed by a `VendorProfile` document linked 1:1 to their primary `User` account:
+
+| Field Name | Type | Rules | Description |
+| :--- | :--- | :--- | :--- |
+| `userId` | `ObjectId` | Required, Unique, Ref: `User` | Link to primary customer account |
+| `storeName` | `String` | Required, Unique, Trim, 2–100 chars | Public display name of store |
+| `slug` | `String` | Unique, Lowercase, URL-safe | Auto-generated URL slug |
+| `description` | `String` | Optional, Max 1000 chars | Store description / biography |
+| `businessEmail` | `String` | Required, Valid Email, Lowercase | Merchant commercial email |
+| `businessPhone` | `String` | Required, 5–25 chars | Merchant support / contact phone |
+| `businessAddress` | `Object` | Required `{ street, city, state, postalCode, country }` | Verified merchant physical address |
+| `status` | `String` | Enum: `['pending', 'approved', 'rejected']`, Default: `'pending'` | KYC review status |
+| `rejectionReason`| `String` | Optional | Administrative feedback if rejected |
+| `createdAt` / `updatedAt` | `Date` | Timestamps | Audit timestamps |
+
+### 2. Onboarding Workflow & Business Rules
+1. **Customer Exclusivity**: Only authenticated users with role `customer` can apply. Admins or already-approved vendors cannot submit duplicate applications (`400 Bad Request`).
+2. **Pending by Default**: Newly submitted applications are strictly set to `status: 'pending'`.
+3. **No Automatic Escalation**: The applicant's role in the `User` model remains `customer` throughout the pending and review stages.
+4. **Defense Against Self-Approval**: Strict Zod validation and controller guards disallow submitting or patching `status`, `rejectionReason`, `userId`, or `role` (`422 Validation Error`).
+5. **Store Name Uniqueness**: Duplicate store names (case-insensitive) are prevented (`409 Conflict`).
+6. **One Application per Account**: Customers are limited to a single vendor profile application (`409 Conflict`).
+
+### 3. Vendor Application Endpoints
+
+| Method | Endpoint | Access Role | Description |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/api/vendors/apply` | Authenticated (`customer`) | Submit vendor onboarding application with store & address details. |
+| `GET` | `/api/vendors/me` | Authenticated | Retrieve authenticated user's vendor profile. Returns `404` if unapplied. |
+| `PATCH` | `/api/vendors/me` | Authenticated | Update permitted store details (`storeName`, `description`, `businessEmail`, `businessPhone`, `businessAddress`). |
+| `GET` | `/api/vendors/status` | Authenticated | Retrieve application status (`pending`, `approved`, `rejected`) and rejection reason if applicable. |
+
+---
+
 ## 🧪 Automated Testing
 
-Both Phase 2A and Phase 2B include fully automated integration test suites executed with `mongodb-memory-server` and `supertest`:
+Phase 2A, Phase 2B, and Phase 3A include fully automated integration test suites executed with `mongodb-memory-server` and `supertest` (35 total tests):
 
 ```bash
-# Run both Auth and RBAC test suites:
+# Run all test suites:
 npm run test
 
 # Or run individually:
-npm run test:auth    # Phase 2A: Registration, Login, Token, Cookies (10 tests)
-npm run test:rbac    # Phase 2B: RBAC, Route Guards, Ownership (11 tests)
+npm run test:auth      # Phase 2A: Registration, Login, Token, Cookies (10 tests)
+npm run test:rbac      # Phase 2B: RBAC, Route Guards, Ownership (11 tests)
+npm run test:vendor    # Phase 3A: Vendor Onboarding, Status, Application Guards (14 tests)
 ```
 
-### Verified RBAC Test Suite (11 Tests)
-1. `GET /api/customer/dashboard` $\rightarrow$ Allowed for `customer` role (`200 OK`).
-2. `GET /api/vendor/dashboard` $\rightarrow$ Blocked for `customer` role (`403 Forbidden`).
-3. `GET /api/admin/dashboard` $\rightarrow$ Blocked for `customer` role (`403 Forbidden`).
-4. `GET /api/vendor/dashboard` $\rightarrow$ Allowed for `vendor` role (`200 OK`).
-5. `GET /api/admin/dashboard` $\rightarrow$ Blocked for `vendor` role (`403 Forbidden`).
-6. `GET /api/admin/dashboard` $\rightarrow$ Allowed for `admin` role (`200 OK`).
-7. `GET /api/{customer,vendor,admin}/dashboard` $\rightarrow$ Blocked for unauthenticated users (`401 Unauthorized`).
-8. `POST /api/auth/register` with `role: "admin"` or `role: "vendor"` $\rightarrow$ Rejected (`422 Validation Error`).
-9. `GET /api/vendor/resources/:otherVendorId` $\rightarrow$ Blocked cross-vendor access (`403 Forbidden`).
-10. `GET /api/vendor/resources/:ownVendorId` $\rightarrow$ Allowed for authorized owner (`200 OK`).
-11. `GET /api/vendor/resources/:vendorId` $\rightarrow$ Allowed for platform admin via governance override (`200 OK`).
+### Verified Vendor Onboarding Test Suite (14 Tests)
+1. `POST /api/vendors/apply` $\rightarrow$ Customer successfully applies; status is `pending` and role remains `customer` (`201 Created`).
+2. `POST /api/vendors/apply` $\rightarrow$ Unauthenticated request rejected (`401 Unauthorized`).
+3. `POST /api/vendors/apply` $\rightarrow$ Duplicate application for the same account blocked (`409 Conflict`).
+4. `POST /api/vendors/apply` $\rightarrow$ Duplicate store name by another applicant blocked (`409 Conflict`).
+5. `POST /api/vendors/apply` $\rightarrow$ Invalid business email rejected (`422 Validation Error`).
+6. `POST /api/vendors/apply` $\rightarrow$ Missing required fields rejected (`422 Validation Error`).
+7. `GET /api/vendors/me` $\rightarrow$ Applicant retrieves own profile (`200 OK`).
+8. `GET /api/vendors/status` $\rightarrow$ Applicant retrieves application status (`200 OK`).
+9. `PATCH /api/vendors/me` with `status: 'approved'` $\rightarrow$ Self-approval modification blocked (`422 Validation Error`).
+10. `PATCH /api/vendors/me` with `role: 'vendor'` $\rightarrow$ Role escalation attempt blocked (`422 Validation Error`).
+11. `GET /api/vendors/me` without application $\rightarrow$ Non-applicant receives `404 Not Found`.
+12. `GET /api/vendors/status` without application $\rightarrow$ Non-applicant receives `404 Not Found`.
+13. `PATCH /api/vendors/me` $\rightarrow$ Permitted store fields successfully updated (`200 OK`).
+14. `POST /api/vendors/apply` $\rightarrow$ Non-customer (Admin) application attempt rejected (`400 Bad Request`).
 
 ---
 
