@@ -5,6 +5,10 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import { env } from './config/env.config';
 import { healthRoutes } from './routes/health.routes';
+import { authRoutes } from './routes/auth.routes';
+import { customerRoutes } from './routes/customer.routes';
+import { vendorRoutes } from './routes/vendor.routes';
+import { adminRoutes } from './routes/admin.routes';
 import { v1Router } from './routes/v1';
 import { notFoundMiddleware } from './middlewares/notFound.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
@@ -44,20 +48,36 @@ export const createApp = (): Application => {
       status: 'online',
       endpoints: {
         health: '/api/health',
+        auth: '/api/auth',
         v1: '/api/v1',
       },
     });
   });
 
-  // Health check endpoints (available at both /api/health and /api/v1/health)
+  // Health check endpoints
   app.use('/api/health', healthRoutes);
   app.use('/api/v1/health', healthRoutes);
+  app.use('/health', healthRoutes);
 
-  // Mount v1 master router
+  // Auth endpoints (mounted on /api/auth, /auth, and /api/v1/auth)
+  app.use('/api/auth', authRoutes);
+  app.use('/auth', authRoutes);
+
+  // Role endpoints
+  app.use('/api/customer', customerRoutes);
+  app.use('/customer', customerRoutes);
+  app.use('/api/vendor', vendorRoutes);
+  app.use('/vendor', vendorRoutes);
+  app.use('/api/admin', adminRoutes);
+  app.use('/admin', adminRoutes);
+
+  // API v1 Router
   app.use('/api/v1', v1Router);
 
-  // 404 Handler & Centralized Error Middleware
+  // 404 Handler (must be registered after all routes)
   app.use(notFoundMiddleware);
+
+  // Centralized Error Middleware (must be registered last)
   app.use(errorMiddleware);
 
   return app;

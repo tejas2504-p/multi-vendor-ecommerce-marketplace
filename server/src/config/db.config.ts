@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
 import { env } from './env.config';
 import { logger } from '../utils/logger';
 
@@ -6,9 +7,19 @@ export const connectDatabase = async (): Promise<void> => {
   try {
     mongoose.set('strictQuery', true);
 
+    // Fix for Windows / ISP DNS failing to resolve MongoDB Atlas SRV records
+    if (env.MONGO_URI.includes('mongodb+srv://')) {
+      try {
+        dns.setServers(['8.8.8.8', '1.1.1.1']);
+      } catch (dnsErr) {
+        logger.debug('Custom DNS fallback not available:', dnsErr);
+      }
+    }
+
     await mongoose.connect(env.MONGO_URI, {
-      serverSelectionTimeoutMS: 2000,
+      serverSelectionTimeoutMS: 10000,
       autoIndex: env.NODE_ENV === 'development',
+      dbName: 'marketplace',
     });
 
     logger.info('✅ Connected to MongoDB successfully.');
@@ -22,7 +33,6 @@ export const connectDatabase = async (): Promise<void> => {
     });
   } catch (error) {
     logger.error('❌ Failed to connect to MongoDB:', error);
-    // In dev, let the server continue so the user can spin up docker containers
     if (env.NODE_ENV === 'production') {
       process.exit(1);
     }
@@ -37,4 +47,3 @@ export const disconnectDatabase = async (): Promise<void> => {
     logger.error('Error closing MongoDB connection:', error);
   }
 };
-

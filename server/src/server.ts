@@ -6,15 +6,14 @@ import { logger } from './utils/logger';
 const startServer = async () => {
   const app = createApp();
 
+  // Connect to MongoDB before accepting traffic
+  await connectDatabase();
+
   const server = app.listen(env.PORT, () => {
     logger.info(`🚀 Marketplace Server running in [${env.NODE_ENV}] mode on port ${env.PORT}`);
     logger.info(`🔗 Health check available at: http://localhost:${env.PORT}/api/health`);
+    logger.info(`🔗 Auth API available at: http://localhost:${env.PORT}/api/auth`);
     logger.info(`🔗 API v1 mounted at: http://localhost:${env.PORT}/api/v1`);
-  });
-
-  // Attempt database connection without blocking HTTP server startup
-  connectDatabase().catch((err) => {
-    logger.warn(`MongoDB initial connection deferred: ${err.message}`);
   });
 
   // Graceful shutdown lifecycle management
