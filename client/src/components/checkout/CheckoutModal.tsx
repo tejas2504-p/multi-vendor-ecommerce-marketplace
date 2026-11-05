@@ -10,11 +10,15 @@ import {
   Loader2,
   ArrowRight,
   PackageCheck,
+  CreditCard,
+  RotateCcw,
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { Address, Order } from '../../types';
 import { addressApi } from '../../services/address.api';
 import { checkoutApi } from '../../services/checkout.api';
+import { paymentApi } from '../../services/payment.api';
+import { loadRazorpayScript } from '../../utils/loadRazorpay';
 
 export const CheckoutModal: React.FC = () => {
   const { cart, isCheckoutOpen, closeCheckout, refreshCart, openAddressModal } = useCart();
@@ -22,7 +26,10 @@ export const CheckoutModal: React.FC = () => {
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [isLoadingAddresses, setIsLoadingAddresses] = useState<boolean>(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
 
   const loadAddresses = useCallback(async () => {
@@ -46,9 +53,78 @@ export const CheckoutModal: React.FC = () => {
     if (isCheckoutOpen) {
       setPlacedOrder(null);
       setError(null);
+      setPaymentError(null);
+      setPaymentSuccess(false);
       loadAddresses();
     }
   }, [isCheckoutOpen, loadAddresses]);
+
+  const handlePayNow = async () => {
+    if (!placedOrder) return;
+
+    try {
+      setIsProcessingPayment(true);
+      setPaymentError(null);
+
+      // 1. Initiate Razorpay order on backend
+      const rzpOrderData = await paymentApi.createOrder(placedOrder.id);
+
+      // 2. Load Razorpay official checkout SDK
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        throw new Error('Razorpay SDK failed to load. Please verify your internet connection.');
+      }
+
+      // 3. Configure Razorpay modal
+      const options = {
+        key: rzpOrderData.keyId,
+        amount: rzpOrderData.amount,
+        currency: rzpOrderData.currency,
+        name: 'NexusMarket Multi-Vendor',
+        description: `Payment for Order #${placedOrder.orderNumber}`,
+        order_id: rzpOrderData.razorpayOrderId,
+        prefill: {
+          name: rzpOrderData.customer.name,
+          contact: rzpOrderData.customer.phone,
+        },
+        theme: {
+          color: '#4F46E5',
+        },
+        handler: async (response: any) => {
+          try {
+            setIsProcessingPayment(true);
+            const verifyResult = await paymentApi.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            setPlacedOrder(verifyResult.order);
+            setPaymentSuccess(true);
+          } catch (err: any) {
+            setPaymentError(err?.response?.data?.error?.message || 'Payment verification failed');
+          } finally {
+            setIsProcessingPayment(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsProcessingPayment(false);
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', (resp: any) => {
+        setPaymentError(resp.error?.description || 'Payment was unsuccessful. You can retry anytime.');
+        setIsProcessingPayment(false);
+      });
+      rzp.open();
+    } catch (err: any) {
+      setPaymentError(err?.response?.data?.error?.message || err.message || 'Payment initiation failed');
+      setIsProcessingPayment(false);
+    }
+  };
 
   if (!isCheckoutOpen) return null;
 
@@ -152,11 +228,34 @@ export const CheckoutModal: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-slate-800">Payment Status:</span>
-                    <p className="capitalize text-amber-600 font-semibold mt-0.5">
-                      {placedOrder.paymentStatus}
+                    <p
+                      className={`capitalize font-bold text-xs mt-0.5 px-2 py-0.5 rounded-full inline-block ${
+                        placedOrder.paymentStatus === 'paid'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {placedOrder.paymentStatus === 'paid' ? 'Paid (Captured)' : placedOrder.paymentStatus}
                     </p>
                   </div>
                 </div>
+
+                {/* Payment Feedback */}
+                {paymentError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between text-xs text-rose-700">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{paymentError}</span>
+                    </div>
+                  </div>
+                )}
+
+                {paymentSuccess && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center space-x-2 text-xs text-emerald-700 font-semibold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Payment verified and captured successfully via Razorpay!</span>
+                  </div>
+                )}
 
                 <div className="pt-3 border-t border-slate-200">
                   <span className="text-xs font-bold text-slate-800 block mb-2">
@@ -180,12 +279,44 @@ export const CheckoutModal: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                onClick={closeCheckout}
-                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-indigo-500/25 transition"
-              >
-                Continue Shopping
-              </button>
+              {/* Payment Actions */}
+              <div className="space-y-3">
+                {placedOrder.paymentStatus !== 'paid' && (
+                  <button
+                    onClick={handlePayNow}
+                    disabled={isProcessingPayment}
+                    className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-indigo-500/25 flex items-center justify-center space-x-2 transition disabled:opacity-50"
+                  >
+                    {isProcessingPayment ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Processing with Razorpay...</span>
+                      </>
+                    ) : paymentError ? (
+                      <>
+                        <RotateCcw className="w-4 h-4" />
+                        <span>Retry Payment (${placedOrder.totalAmount.toFixed(2)})</span>
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-4 h-4" />
+                        <span>Pay Now with Razorpay (${placedOrder.totalAmount.toFixed(2)})</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                <button
+                  onClick={closeCheckout}
+                  className={`w-full py-3 rounded-2xl text-xs sm:text-sm font-bold transition ${
+                    placedOrder.paymentStatus === 'paid'
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {placedOrder.paymentStatus === 'paid' ? 'Continue Shopping' : 'Pay Later & Continue Shopping'}
+                </button>
+              </div>
             </div>
           ) : !cart || cart.items.length === 0 ? (
             /* Empty Cart View */

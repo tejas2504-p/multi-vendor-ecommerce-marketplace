@@ -30,6 +30,10 @@ const envSchema = z.object({
 
   STRIPE_SECRET_KEY: z.string().optional().default('sk_test_placeholder'),
   STRIPE_WEBHOOK_SECRET: z.string().optional().default('whsec_placeholder'),
+
+  RAZORPAY_KEY_ID: z.string().default('rzp_test_placeholder'),
+  RAZORPAY_KEY_SECRET: z.string().default('rzp_secret_placeholder'),
+  RAZORPAY_WEBHOOK_SECRET: z.string().default('rzp_whsec_placeholder'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

@@ -16,6 +16,7 @@ import { cartRoutes } from './routes/cart.routes';
 import { addressRoutes } from './routes/address.routes';
 import { checkoutRoutes } from './routes/checkout.routes';
 import { orderRoutes } from './routes/order.routes';
+import { paymentRoutes } from './routes/payment.routes';
 import { v1Router } from './routes/v1';
 import { notFoundMiddleware } from './middlewares/notFound.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
@@ -36,8 +37,15 @@ export const createApp = (): Application => {
     })
   );
 
-  // Request Body Parsing
-  app.use(express.json({ limit: '10mb' }));
+  // Request Body Parsing (capturing raw buffer for HMAC webhook signature verification)
+  app.use(
+    express.json({
+      limit: '10mb',
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf;
+      },
+    })
+  );
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.use(cookieParser());
 
@@ -94,11 +102,13 @@ export const createApp = (): Application => {
   app.use('/api/addresses', addressRoutes);
   app.use('/addresses', addressRoutes);
 
-  // Checkout & Order endpoints
+  // Checkout, Order & Payment endpoints
   app.use('/api/checkout', checkoutRoutes);
   app.use('/checkout', checkoutRoutes);
   app.use('/api/orders', orderRoutes);
   app.use('/orders', orderRoutes);
+  app.use('/api/payments', paymentRoutes);
+  app.use('/payments', paymentRoutes);
 
   // API v1 Router
   app.use('/api/v1', v1Router);

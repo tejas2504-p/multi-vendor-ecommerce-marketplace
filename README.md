@@ -866,6 +866,206 @@ Run using `npm run test:checkout`:
 
 ---
 
+## 📦 Phase 7B – Multi-Vendor Order Management
+
+### 1. Multi-Vendor Order Splitting Architecture
+Every checkout creates a **Parent Order** (`Order`) representing the customer transaction, and splits items into $N$ **Child Vendor Orders** (`VendorOrder`), one for each distinct merchant.
+
+- **Parent Order**: Tracks `customerId`, `orderNumber`, `deliveryAddress` snapshot, `vendorOrders` references, `subtotal`, `shippingAmount`, `totalAmount`, `paymentStatus`, and composite `orderStatus`.
+- **Vendor Order**: Tracks `parentOrderId`, `vendorId`, `vendorOrderNumber`, items snapshot, `vendorSubtotal`, `shippingShare`, `orderStatus`, `shipmentTracking` (carrier, trackingNumber, dates), and `statusHistory`.
+
+### 2. Status Aggregation Rule
+The parent order composite status is dynamically derived from its child vendor orders:
+1. **Cancelled**: If every vendor order is cancelled $\rightarrow$ parent order is `cancelled`.
+2. **Delivered**: If all non-cancelled vendor orders are delivered $\rightarrow$ `delivered`.
+3. **Partially Delivered**: If at least one active vendor order is delivered $\rightarrow$ `partially_delivered`.
+4. **Shipped**: If all non-cancelled vendor orders are shipped $\rightarrow$ `shipped`.
+5. **Partially Shipped**: If at least one active vendor order is shipped $\rightarrow$ `partially_shipped`.
+6. **Processing**: If any active vendor order is processing $\rightarrow$ `processing`.
+7. **Confirmed**: Initial state upon successful checkout.
+
+### 3. Multi-Vendor Order API Endpoints
+- **Customer**:
+  - `GET /api/orders`: List customer parent orders.
+  - `GET /api/orders/:orderId`: Retrieve parent order details.
+  - `GET /api/orders/:orderId/vendor-orders`: Retrieve breakdown of vendor packages and tracking numbers.
+- **Vendor**:
+  - `GET /api/vendor/orders`: List orders belonging exclusively to the merchant.
+  - `GET /api/vendor/orders/:vendorOrderId`: Retrieve merchant order details.
+  - `PATCH /api/vendor/orders/:vendorOrderId/status`: Advance fulfillment lifecycle (`processing` $\rightarrow$ `shipped` $\rightarrow$ `delivered` or `cancelled`). Requires `carrier` and `trackingNumber` when status is marked `shipped`. Restores inventory exactly once upon cancellation.
+- **Admin**:
+  - `GET /api/admin/orders`: Platform-wide order oversight with customer/status filtering.
+  - `GET /api/admin/vendor-orders`: Platform-wide vendor orders listing.
+  - `PATCH /api/admin/orders/:orderId/status`: Administrative status override.
+
+---
+
+## 💳 Phase 8A – Razorpay Payment Gateway Integration
+
+### 1. Architecture & Security
+- **Official SDK**: Official `razorpay` Node.js client initialized with `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`.
+- **Backend-Authoritative Pricing**: Payable amounts are calculated strictly on the backend using stored order data converted to paise ($1\text{ INR} = 100\text{ paise}$). Frontend amounts are never trusted.
+- **Cryptographic Verification**: Signatures are validated using HMAC-SHA256 (`crypto.createHmac('sha256', secret).update(orderId + "|" + paymentId).digest('hex')`) in timing-safe manner.
+- **Webhook Raw-Body Preservation**: `express.json` captures `req.rawBody` buffer so webhook HMAC signatures match byte-for-byte without breaking normal JSON request parsing.
+- **Deduplication & Replay Protection**:
+  - Processed webhook event IDs are saved in `ProcessedWebhookEvent` to safely handle webhook retries.
+  - Verification API checks existing payment status and returns idempotently for duplicate requests.
+
+### 2. Environment Configuration
+Add the following to your `.env`:
+```env
+RAZORPAY_KEY_ID=rzp_test_YourKeyIdHere
+RAZORPAY_KEY_SECRET=YourKeySecretHere
+RAZORPAY_WEBHOOK_SECRET=YourWebhookSecretHere
+```
+
+### 3. Payment API Endpoints
+
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/payments/create-order` | Customer | Initiate Razorpay order for an eligible marketplace order |
+| `POST` | `/api/payments/verify` | Customer | Cryptographically verify signature and mark payment captured |
+| `POST` | `/api/payments/webhook` | Public | Signature-verified webhook handler for `payment.captured` and `payment.failed` |
+| `GET` | `/api/payments/order/:orderId` | Customer | Retrieve payment history and transaction metadata for an order |
+| `GET` | `/api/payments/admin` | Admin | Platform-wide payment auditing and transaction records |
+
+#### Postman Examples
+
+##### 1. Initiate Payment Order (`POST /api/payments/create-order`)
+```json
+// Headers: Cookie: access_token=<JWT_TOKEN>
+// Request Body
+{
+  "orderId": "6aecd95cce255c4ab0797632"
+}
+
+// Response (201 Created)
+{
+  "success": true,
+  "message": "Razorpay order created successfully",
+  "data": {
+    "keyId": "rzp_test_placeholder",
+    "razorpayOrderId": "order_test_1793910888921_1r91q",
+    "amount": 25000,
+    "currency": "INR",
+    "orderId": "6aecd95cce255c4ab0797632",
+    "orderNumber": "ORD-TEST-001",
+    "customer": {
+      "name": "Alice Customer",
+      "phone": "+1 555-123-4567"
+    }
+  }
+}
+```
+
+##### 2. Verify Payment (`POST /api/payments/verify`)
+```json
+// Headers: Cookie: access_token=<JWT_TOKEN>
+// Request Body
+{
+  "razorpay_order_id": "order_test_1793910888921_1r91q",
+  "razorpay_payment_id": "pay_test_9876543210",
+  "razorpay_signature": "e5c26b856b3e7bc2100868f0...<HMAC_SHA256>"
+}
+
+// Response (200 OK)
+{
+  "success": true,
+  "message": "Payment verified and captured successfully",
+  "data": {
+    "payment": {
+      "id": "6aece007963d4aefaa1531c8",
+      "customerId": "6aecd95ace255c4ab079761e",
+      "parentOrderId": "6aecd95cce255c4ab0797632",
+      "razorpayOrderId": "order_test_1793910888921_1r91q",
+      "razorpayPaymentId": "pay_test_9876543210",
+      "amount": 250,
+      "currency": "INR",
+      "status": "captured",
+      "verifiedAt": "2026-11-06T01:54:48.000Z"
+    },
+    "order": {
+      "id": "6aecd95cce255c4ab0797632",
+      "orderNumber": "ORD-TEST-001",
+      "paymentStatus": "paid",
+      "orderStatus": "confirmed"
+    },
+    "isDuplicate": false
+  }
+}
+```
+
+##### 3. Razorpay Webhook (`POST /api/payments/webhook`)
+```json
+// Headers: x-razorpay-signature: <HMAC_SHA256_OF_RAW_BODY>
+// Request Body (Raw JSON)
+{
+  "event": "payment.captured",
+  "event_id": "evt_capture_123456",
+  "payload": {
+    "payment": {
+      "entity": {
+        "id": "pay_test_9876543210",
+        "order_id": "order_test_1793910888921_1r91q",
+        "amount": 25000,
+        "currency": "INR",
+        "status": "captured",
+        "method": "upi"
+      }
+    }
+  }
+}
+
+// Response (200 OK)
+{
+  "success": true,
+  "message": "Razorpay webhook processed successfully",
+  "data": {
+    "processed": true,
+    "event": "payment.captured",
+    "isDuplicate": false
+  }
+}
+```
+
+---
+
+### Verified Phase 8A Razorpay Payment Test Suite (12 Tests)
+Run using `npm run test:payment`:
+1. **Create Razorpay Order**: Customer initiates payment $\rightarrow$ creates Razorpay order in paise, records pending payment in MongoDB (`201 Created`).
+2. **Complete Test Payment**: Valid HMAC-SHA256 signature accepted $\rightarrow$ payment marked `captured` and parent order marked `paid` (`200 OK`).
+3. **Signature Immutability**: Cryptographic signature and verification timestamp accurately stored in MongoDB.
+4. **Invalid Signature Rejection**: Tampered or forged signatures rejected $\rightarrow$ marked `failed` with failure reason recorded (`400 Bad Request`).
+5. **Failed Payment Webhook**: `payment.failed` webhook reconciled with payment and order records (`200 OK`).
+6. **Webhook Signature Validation**: Forged or unsigned webhook payloads blocked with `400 Bad Request`.
+7. **Webhook Event Deduplication**: Duplicate webhook event with identical `event_id` acknowledged safely without double-processing (`isDuplicate: true`).
+8. **Duplicate Verification (Replay Protection)**: Repeated verification requests return existing captured payment idempotently without errors (`isDuplicate: true`).
+9. **Payment Amount Mismatch Protection**: Verification rejected if payment amount differs from order total amount (`400 Bad Request`).
+10. **Tenant Isolation Guard**: Customer 2 cannot initiate or verify payments for Customer 1's orders (`403 Forbidden`).
+11. **Payment Retry & Cancellation Safeguards**: Retry permitted on eligible unpaid orders; blocked on cancelled orders (`400 Bad Request`) or already paid orders (`400 Bad Request`).
+12. **Payment History in MongoDB**: `GET /api/payments/order/:orderId` retrieves full transaction metadata, timestamps, and payment statuses (`200 OK`).
+
+---
+
+### Verified Phase 7B Multi-Vendor Order Test Suite (14 Tests)
+Run using `npm run test:multivendor`:
+1. Checkout with 1 vendor $\rightarrow$ Creates 1 parent order and 1 child vendor order (`201 Created`).
+2. Checkout with 2 distinct vendors $\rightarrow$ Creates 1 parent order and 2 distinct vendor orders (`201 Created`).
+3. Checkout with 3 distinct vendors $\rightarrow$ Creates 1 parent order and 3 distinct vendor orders (`201 Created`).
+4. Verified exactly 1 parent order exists for multi-vendor transaction.
+5. Items accurately partitioned and grouped strictly by merchant.
+6. Reconciled totals: parent subtotal matches sum of vendor subtotals ($1200.00).
+7. Customer ownership isolation: customer cannot view other customers' parent or vendor orders (`403 Forbidden`).
+8. Vendor tenant isolation: vendor cannot view or update another vendor's order (`403 Forbidden`).
+9. Platform admin access: administrator has full visibility across all parent and vendor orders.
+10. Valid fulfillment transitions verified; carrier/tracking number required when shipped; illegal transitions blocked.
+11. Composite status aggregation: partial delivery accurately derives parent status as `partially_delivered`.
+12. Vendor order cancellation restores product inventory count exactly once in MongoDB and Elasticsearch.
+13. Checkout idempotency prevents duplicate parent and vendor order creation.
+14. Order snapshot immutability: subsequent product price and name edits do not modify completed order records.
+
+---
+
 ## 📖 Architectural Documentation
 - Detailed system design, entity relationships, security architecture, and multi-vendor commission math are documented in **[`docs/architecture.md`](docs/architecture.md)**.
 - Complete REST API route specifications and payload formats are detailed in **[`docs/api-planning.md`](docs/api-planning.md)**.

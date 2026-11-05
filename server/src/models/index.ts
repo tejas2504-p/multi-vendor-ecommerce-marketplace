@@ -11,6 +11,8 @@ export * from './cart.model';
 export * from './address.model';
 export * from './order.model';
 export * from './vendorOrder.model';
+export * from './payment.model';
+export * from './webhookEvent.model';
 
 export const registeredModels = [
   'User',

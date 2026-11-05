@@ -8,9 +8,13 @@ import {
   Loader2,
   Store,
   Layers,
+  CreditCard,
+  CheckCircle2,
 } from 'lucide-react';
 import { Order, VendorOrder } from '../../types';
 import { orderApi } from '../../services/order.api';
+import { paymentApi } from '../../services/payment.api';
+import { loadRazorpayScript } from '../../utils/loadRazorpay';
 
 interface CustomerOrdersModalProps {
   isOpen: boolean;
@@ -23,6 +27,9 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
   const [vendorOrders, setVendorOrders] = useState<VendorOrder[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
@@ -48,6 +55,8 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
 
   const handleSelectOrder = async (order: Order) => {
     setSelectedOrder(order);
+    setPaymentError(null);
+    setPaymentSuccess(false);
     try {
       setIsLoadingDetails(true);
       const vo = await orderApi.getCustomerVendorOrders(order.id);
@@ -56,6 +65,68 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
       console.error('Failed to load child vendor orders', err);
     } finally {
       setIsLoadingDetails(false);
+    }
+  };
+
+  const handlePayOrder = async (order: Order) => {
+    try {
+      setIsProcessingPayment(true);
+      setPaymentError(null);
+
+      const rzpOrderData = await paymentApi.createOrder(order.id);
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        throw new Error('Razorpay SDK failed to load. Please verify your connection.');
+      }
+
+      const options = {
+        key: rzpOrderData.keyId,
+        amount: rzpOrderData.amount,
+        currency: rzpOrderData.currency,
+        name: 'NexusMarket Multi-Vendor',
+        description: `Payment for Order #${order.orderNumber}`,
+        order_id: rzpOrderData.razorpayOrderId,
+        prefill: {
+          name: rzpOrderData.customer.name,
+          contact: rzpOrderData.customer.phone,
+        },
+        theme: {
+          color: '#4F46E5',
+        },
+        handler: async (response: any) => {
+          try {
+            setIsProcessingPayment(true);
+            const verifyResult = await paymentApi.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            setSelectedOrder(verifyResult.order);
+            setPaymentSuccess(true);
+            loadOrders();
+          } catch (err: any) {
+            setPaymentError(err?.response?.data?.error?.message || 'Payment verification failed');
+          } finally {
+            setIsProcessingPayment(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsProcessingPayment(false);
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', (resp: any) => {
+        setPaymentError(resp.error?.description || 'Payment was unsuccessful');
+        setIsProcessingPayment(false);
+      });
+      rzp.open();
+    } catch (err: any) {
+      setPaymentError(err?.response?.data?.error?.message || err.message || 'Payment initiation failed');
+      setIsProcessingPayment(false);
     }
   };
 
@@ -169,11 +240,56 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
                     <p className="text-slate-600">
                       Shipping: {selectedOrder.shippingAmount === 0 ? 'FREE' : `$${selectedOrder.shippingAmount.toFixed(2)}`}
                     </p>
-                    <p className="text-sm font-black text-slate-900 mt-1">
-                      Total: ${selectedOrder.totalAmount.toFixed(2)}
-                    </p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className="text-sm font-black text-slate-900">
+                        Total: ${selectedOrder.totalAmount.toFixed(2)}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                          selectedOrder.paymentStatus === 'paid'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {selectedOrder.paymentStatus === 'paid' ? 'Paid (Captured)' : selectedOrder.paymentStatus}
+                      </span>
+                    </div>
+
+                    {selectedOrder.paymentStatus !== 'paid' && selectedOrder.orderStatus !== 'cancelled' && (
+                      <button
+                        onClick={() => handlePayOrder(selectedOrder)}
+                        disabled={isProcessingPayment}
+                        className="mt-2.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center space-x-1.5 transition disabled:opacity-50"
+                      >
+                        {isProcessingPayment ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Processing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="w-3.5 h-3.5" />
+                            <span>Pay with Razorpay</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {paymentError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{paymentError}</span>
+                  </div>
+                )}
+
+                {paymentSuccess && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 font-semibold flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Payment verified and captured successfully via Razorpay!</span>
+                  </div>
+                )}
               </div>
 
               {/* Vendor Shipments Breakdown */}

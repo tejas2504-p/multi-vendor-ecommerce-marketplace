@@ -258,3 +258,35 @@ export interface Order {
     | 'cancelled';
   createdAt: string;
 }
+
+export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded';
+
+export interface Payment {
+  id: string;
+  customerId: string;
+  parentOrderId: string;
+  razorpayOrderId: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  amount: number;
+  currency: string;
+  paymentMethod?: string;
+  status: PaymentStatus;
+  failureReason?: string;
+  verifiedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RazorpayOrderData {
+  keyId: string;
+  razorpayOrderId: string;
+  amount: number; // in paise
+  currency: string;
+  orderId: string;
+  orderNumber: string;
+  customer: {
+    name: string;
+    phone: string;
+  };
+}

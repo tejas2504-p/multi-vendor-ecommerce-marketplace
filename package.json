@@ -23,6 +23,7 @@
     "test:cart": "npm run test:cart --workspace=server",
     "test:checkout": "npm run test:checkout --workspace=server",
     "test:multivendor": "npm run test:multivendor --workspace=server",
+    "test:payment": "npm run test:payment --workspace=server",
     "test": "npm run test --workspace=server",
     "build:server": "npm run build --workspace=server",
     "build:client": "npm run build --workspace=client",

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+  import mongoose from 'mongoose';
 import { Category, ICategory } from '../models/category.model';
 import { CreateCategoryInput } from '../validators/product.validator';
 import { AppError } from '../utils/apiError';
