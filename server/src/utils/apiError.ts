@@ -40,6 +40,10 @@ export class AppError extends Error {
     return new AppError(message, StatusCodes.CONFLICT);
   }
 
+  static serviceUnavailable(message: string = 'Service temporarily unavailable') {
+    return new AppError(message, StatusCodes.SERVICE_UNAVAILABLE, true);
+  }
+
   static internal(message: string = 'Internal server error') {
     return new AppError(message, StatusCodes.INTERNAL_SERVER_ERROR, false);
   }

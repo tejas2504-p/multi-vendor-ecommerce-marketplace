@@ -5,7 +5,9 @@ import { requireApprovedVendor } from '../middlewares/vendor.middleware';
 import { authorizeOwnership } from '../middlewares/ownership.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import { updateVendorProfileSchema } from '../validators/vendor.validator';
+import { updateInventorySchema } from '../validators/product.validator';
 import { VendorController } from '../controllers/vendor.controller';
+import { ProductController } from '../controllers/product.controller';
 import { ApiResponse } from '../utils/apiResponse';
 
 const router = Router();
@@ -42,6 +44,29 @@ router.patch(
   requireApprovedVendor,
   validateBody(updateVendorProfileSchema),
   VendorController.updateStore
+);
+
+/**
+ * GET /api/vendor/products
+ * Protected: List authenticated vendor's owned products
+ */
+router.get(
+  '/products',
+  authenticate,
+  requireApprovedVendor,
+  ProductController.listVendor
+);
+
+/**
+ * PATCH /api/vendor/products/:id/inventory
+ * Protected: Update vendor's product stock
+ */
+router.patch(
+  '/products/:id/inventory',
+  authenticate,
+  requireApprovedVendor,
+  validateBody(updateInventorySchema),
+  ProductController.updateInventory
 );
 
 /**

@@ -34,6 +34,33 @@ export const errorMiddleware = (
       message: issue.message,
     }));
   }
+  // Multer file size limit error
+  else if (err.name === 'MulterError') {
+    const multerErr = err as any;
+    statusCode = StatusCodes.BAD_REQUEST;
+    errorCode = 'FILE_TOO_LARGE';
+    if (multerErr.code === 'LIMIT_FILE_SIZE') {
+      message = 'Image file exceeds the maximum allowed size of 5 MB.';
+    } else if (multerErr.code === 'LIMIT_FILE_COUNT') {
+      message = `Too many files. A maximum of 5 images can be uploaded at once.`;
+    } else if (multerErr.code === 'LIMIT_UNEXPECTED_FILE') {
+      message = `Unexpected field name "${multerErr.field}". Use "images" for multi-upload or "image" for single replacement.`;
+    } else {
+      message = multerErr.message || 'File upload error';
+    }
+  }
+  // Generic Multer file filter rejection (custom Error from fileFilter)
+  else if (err.message && err.message.startsWith('Invalid file type')) {
+    statusCode = StatusCodes.BAD_REQUEST;
+    errorCode = 'INVALID_FILE_TYPE';
+    message = err.message;
+  }
+  // Multipart boundary / parsing error
+  else if (err.message && (err.message.includes('Boundary not found') || err.message.includes('Multipart:'))) {
+    statusCode = StatusCodes.BAD_REQUEST;
+    errorCode = 'BAD_REQUEST';
+    message = 'Invalid multipart form-data request. Ensure proper boundaries and fields.';
+  }
   // JWT Errors
   else if (err.name === 'JsonWebTokenError') {
     statusCode = StatusCodes.UNAUTHORIZED;

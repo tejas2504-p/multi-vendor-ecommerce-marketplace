@@ -47,3 +47,43 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
   }
 };
 
+/**
+ * Optional Authentication: Attach user if valid token present, otherwise proceed anonymously.
+ */
+export const optionalAuthenticate = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    let token: string | undefined;
+
+    if (req.cookies && req.cookies[AUTH_COOKIE_NAME]) {
+      token = req.cookies[AUTH_COOKIE_NAME];
+    } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+      return next();
+    }
+
+    const decoded = verifyAccessToken(token);
+    const user = await User.findById(decoded.id).select('+isActive');
+
+    if (user && user.isActive) {
+      req.user = {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      };
+    }
+
+    next();
+  } catch {
+    // Non-fatal if invalid token on optional route
+    next();
+  }
+};
+

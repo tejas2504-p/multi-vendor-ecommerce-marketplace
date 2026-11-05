@@ -4,6 +4,9 @@
 
 export * from './user.model';
 export * from './vendorProfile.model';
+export * from './category.model';
+export * from './product.model';
+export * from './productSyncOutbox.model';
 
 export const registeredModels = [
   'User',

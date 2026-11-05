@@ -16,16 +16,17 @@ const envSchema = z.object({
   MONGO_URI: z.string().default('mongodb://localhost:27017/marketplace'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   ELASTICSEARCH_NODE: z.string().default('http://localhost:9200'),
+  ELASTICSEARCH_INDEX: z.string().default('marketplace_products'),
 
   JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 characters'),
   JWT_ACCESS_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 characters'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
 
-  AWS_ACCESS_KEY_ID: z.string().optional().default('mock_key'),
-  AWS_SECRET_ACCESS_KEY: z.string().optional().default('mock_secret'),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_REGION: z.string().default('us-east-1'),
-  AWS_S3_BUCKET_NAME: z.string().default('marketplace-assets'),
+  AWS_S3_BUCKET_NAME: z.string().min(1, 'AWS_S3_BUCKET_NAME must be set'),
 
   STRIPE_SECRET_KEY: z.string().optional().default('sk_test_placeholder'),
   STRIPE_WEBHOOK_SECRET: z.string().optional().default('whsec_placeholder'),

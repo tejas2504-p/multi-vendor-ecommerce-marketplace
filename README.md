@@ -12,9 +12,9 @@ An enterprise-grade, Amazon-style multi-vendor e-commerce platform built with **
 | **Styling** | Tailwind CSS, Lucide React | Utility-first responsive design tokens and iconography |
 | **Backend** | Node.js, Express.js, TypeScript | Layered RESTful API, validation, and error pipeline |
 | **Database** | MongoDB 7.0 + Mongoose 8.x | Primary document store for catalogs, orders, and users |
+| **Search Engine** | Elasticsearch 8.x (`@elastic/elasticsearch`) | Dedicated product search engine, edge n-gram analyzers & outbox sync |
+| **Media Storage**| AWS S3 (`@aws-sdk/client-s3`) + Multer | Private bucket asset management, pre-signed URLs, atomic rollback |
 | **Caching (Future Phase)** | Redis 7.2 | Distributed stock locks, session blacklist, rate limiting |
-| **Search (Future Phase)** | Elasticsearch 8.13 | High-speed full-text search, fuzzy matching & faceted filters |
-| **Media Storage (Future Phase)**| AWS S3 + CloudFront | Direct-to-S3 pre-signed media uploads & CDN delivery |
 | **Payments (Future Phase)** | Stripe Connect / Razorpay Route | Multi-party split payments and escrow payout engine |
 
 ---
@@ -253,12 +253,206 @@ Phase 3B provides full administrative governance over vendor onboarding applicat
 
 ---
 
+## 📦 Phase 4A: Product Management (CRUD) & Inventory System
+
+Phase 4A implements the complete product catalog, taxonomy management, vendor product lifecycle, and atomic inventory controls with zero negative-stock race conditions.
+
+### 1. Data Models & Schemas
+
+#### Category Schema (`Category`)
+- `name`: Category name (e.g., `"Electronics"`, trimmed, 2–100 chars).
+- `slug`: URL-friendly identifier, unique and indexed.
+- `description`: Optional category description.
+- `parentCategory`: Optional self-referencing `ObjectId` for hierarchical taxonomy.
+- `isActive`: Boolean flag (default `true`) allowing admins to disable entire product trees.
+- `timestamps`: Automatic `createdAt` and `updatedAt`.
+
+#### Product Schema (`Product`)
+- `name`: Required string (2–200 chars).
+- `description`: Required rich text description (10–10,000 chars).
+- `price`: Positive number strictly `> 0`.
+- `categoryId`: Reference to an active `Category` document.
+- `vendorId`: Reference to the product's owning `User` (strictly bound from JWT session; client input rejected).
+- `stock`: Non-negative integer `≥ 0`.
+- `images`: Array of image URL strings (Phase 4B will handle direct AWS S3 uploads).
+- `brand`: Optional brand string.
+- `sku`: Unique stock keeping unit. Auto-generated if not supplied by vendor (`BRAND-TIMESTAMP-RANDOM`).
+- `status`: Enum `['draft', 'active', 'inactive']` (default `'active'`).
+- `isDeleted`: Boolean soft-delete flag (default `false`) preserving database integrity for future orders.
+- **Indexes**: Compound index on `{ vendorId: 1, status: 1 }`, `{ categoryId: 1, status: 1 }`, text index on `{ name: "text", description: "text", brand: "text" }`, and unique sparse index on `sku`.
+
+### 2. Business Logic & Security Controls
+1. **Approved Vendor Guard**: Only accounts with `role: "vendor"` and `VendorProfile.status: "approved"` can create or modify products.
+2. **Server-Side Ownership Enforcement**: `vendorId` is extracted directly from the authenticated request (`req.user.id`). Any attempt by the client to specify or change `vendorId` is discarded.
+3. **Cross-Vendor Isolation**: Competing vendors attempting to update or delete another merchant's product are blocked with `403 Forbidden`.
+4. **Active Category Verification**: Products cannot be created under inactive or non-existent categories (`400 Bad Request`).
+5. **Atomic Inventory Protection**: Inventory decrements use conditional atomic updates:
+   ```typescript
+   Product.findOneAndUpdate(
+     { _id: productId, isDeleted: false, stock: { $gte: quantity } },
+     { $inc: { stock: -quantity } },
+     { new: true }
+   );
+   ```
+   If current stock is lower than the requested decrement, MongoDB matches zero documents, rejecting the request with `400 Bad Request` and mathematically preventing negative stock.
+6. **Soft Deletion**: `DELETE /api/products/:id` sets `isDeleted = true` and `status = 'inactive'`, preventing orphaned references in future shopping carts or completed orders.
+7. **Draft Visibility Rules**: Draft products are hidden from the public storefront (`GET /api/products`) and competing vendors, but remain accessible to their owning vendor and platform admins.
+
+### 3. API Endpoints Implemented
+
+| Method | Endpoint | Access Role | Description |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/api/products` | `vendor` (Approved) | Create product with auto-generated SKU & category check. |
+| `GET` | `/api/products` | Public | Browse active products (category, price range, search, pagination). |
+| `GET` | `/api/products/:id` | Public / Owner | View single product details (drafts shielded from non-owners). |
+| `PATCH` | `/api/products/:id` | Owner / Admin | Update product information (cannot reassign ownership). |
+| `DELETE`| `/api/products/:id` | Owner / Admin | Soft-delete product (`isDeleted: true`, `status: 'inactive'`). |
+| `PATCH` | `/api/products/:id/inventory` | Owner / Admin | Atomically increment, decrement, or set absolute stock. |
+| `GET` | `/api/vendor/products` | `vendor` (Approved) | Vendor views their own catalog with all status states & pagination. |
+| `PATCH` | `/api/vendor/products/:id/inventory` | `vendor` (Approved) | Vendor updates their product inventory. |
+| `GET` | `/api/admin/products` | `admin` | Admin audits all products across all vendors and states. |
+| `PATCH` | `/api/admin/products/:id/status` | `admin` | Admin moderation status update (`active`, `inactive`, `draft`). |
+| `GET` | `/api/categories` | Public | List all active product categories. |
+| `POST` | `/api/categories` | `admin` | Create new product category. |
+
+---
+
+## 🖼️ Phase 4B: AWS S3 Image Upload & Product Media Management
+
+Phase 4B introduces enterprise cloud media storage powered by **AWS S3** and the **AWS SDK for JavaScript v3** (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`). It supports secure multipart uploads, in-memory buffer inspection, magic-byte validation, atomicity rollbacks, and private presigned URL delivery.
+
+### 1. Storage Architecture & Privacy
+- **Private S3 Bucket**: The S3 bucket is completely private with no public ACLs or public read/write permissions.
+- **Hierarchical Key Organization**: S3 object keys follow a strict vendor and product namespace to prevent collisions and simplify bucket lifecycle policies:
+  ```
+  products/<vendorId>/<productId>/<uuidv4>.<ext>
+  ```
+- **Path Traversal Defense**: All URL parameters (`vendorId`, `productId`, filenames) are sanitised before key construction (`buildObjectKey`).
+- **No Binary in Database**: MongoDB stores only lightweight subdocument metadata (`key`, `originalName`, `mimeType`, `sizeBytes`, `uploadedAt`). Raw binaries and permanent presigned URLs are never written to MongoDB.
+
+### 2. Image Validation & Security Rules
+- **Allowed MIME Types**: `image/jpeg`, `image/png`, `image/webp`.
+- **Maximum File Size**: 5 MB per image (enforced at both Multer middleware and service layer).
+- **Maximum Images per Product**: 5 images maximum. Attempts to exceed 5 images return `400 Bad Request`.
+- **Deep Content Inspection (Magic Bytes)**: Validates actual file bytes (`0xFFD8FF` for JPEG, `0x89504E47` for PNG, `RIFF...WEBP` for WebP), blocking executable payloads disguised with image file extensions.
+- **Zero Disk Footprint**: Uses Multer `memoryStorage` so buffers are held in memory during validation and uploaded directly to S3 without writing temporary files to local disks.
+
+### 3. Media API Endpoints Implemented
+
+| Method | Endpoint | Access Role | Description |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/api/products/:id/images` | `vendor` (Approved Owner) | Upload up to 5 images (field: `images`, `multipart/form-data`). |
+| `PUT` | `/api/products/:id/images/:imageId` | Owner / Admin | Replace an existing product image with a new upload (field: `image`). |
+| `DELETE`| `/api/products/:id/images/:imageId` | Owner / Admin | Delete product image from both MongoDB and AWS S3 storage. |
+| `GET` | `/api/products/:id/images` | Public | Retrieve freshly generated presigned GET URLs (1-hour expiration). |
+
+### 4. Failure Recovery & Atomic Rollback
+- **Database Failure Rollback**: If MongoDB fails to persist image references after successful S3 uploads, the system initiates an immediate compensation cleanup (`ImageStorageService.deleteImagesFromS3`), preventing orphaned files in S3.
+- **Replacement Atomicity**: During image replacement (`PUT /api/products/:id/images/:imageId`), the new image is uploaded to S3 first. If the MongoDB update succeeds, the old S3 object is deleted; if the database update fails, the new S3 upload is rolled back.
+
+### 5. Frontend Media Uploader Component
+- Reusable React component: [`ProductImageUploader.tsx`](client/src/components/ui/ProductImageUploader.tsx).
+- Features: Instant browser previews with `URL.createObjectURL`, upload progress tracking, client-side validation, badge deletion controls, and zero AWS credentials in the frontend bundle.
+
+---
+
+## 🔍 Phase 5A: Elasticsearch Setup & Product Indexing
+
+Phase 5A establishes Elasticsearch as a dedicated, high-performance product search engine while maintaining MongoDB as the single authoritative source of truth.
+
+### 1. Architectural Philosophy & Source of Truth
+- **MongoDB**: Primary transactional database managing ACIDs, constraints, references, order history, inventory transactions, and vendor relations.
+- **Elasticsearch**: Read-optimized search discovery index holding denormalized product documents with text analyzers and filtering facets.
+- **Decoupled Resilience**: A failure in Elasticsearch or network partitions will **never** block or fail a MongoDB product CRUD operation. If Elasticsearch is unreachable, operations succeed in MongoDB and queue a retry entry in the Outbox.
+
+### 2. Elasticsearch Index Design (`marketplace_products`)
+The `marketplace_products` index uses custom tokenizers and filters optimized for e-commerce search:
+- **Analyzers**:
+  - `product_search_analyzer`: Standard tokenizer + `lowercase` + `asciifolding` + `product_edge_ngram_filter` (min 2, max 15 chars) + `stop` + `english_stemmer`. Enables instant partial matching as users type.
+  - `product_search_query_analyzer`: Standard tokenizer + `lowercase` + `asciifolding` + `stop` + `english_stemmer` (no ngram splitting at query time).
+- **Field Mappings**:
+  - `productId`: `keyword` (exact MongoDB ObjectId document ID).
+  - `name`: `text` (analyzed with `product_search_analyzer`, subfield `keyword` for exact sort/aggregations).
+  - `description`: `text` (analyzed with standard full-text analyzer).
+  - `brand`: `keyword` (faceted filtering and brand aggregation).
+  - `categoryId` & `categoryName`: `keyword` (multi-category filtering).
+  - `vendorId`: `keyword` (merchant filtering).
+  - `price`: `double` (range queries and sorting).
+  - `stock`: `integer` (in-stock availability filters).
+  - `status`: `keyword` (lifecycle status).
+  - `createdAt` & `updatedAt`: `date` (chronological sorting).
+
+### 3. Outbox Pattern & Zero Data Loss (`ProductSyncOutbox`)
+To avoid distributed transaction anomalies, every product lifecycle event uses the transactional Outbox pattern:
+1. Product CRUD succeeds in MongoDB.
+2. Synchronous indexing is attempted against Elasticsearch via `ProductIndexingService.syncProduct`.
+3. If Elasticsearch is unavailable or returns an error:
+   - The user operation **succeeds immediately** with HTTP 200/201.
+   - An entry is logged in `ProductSyncOutbox` with status `PENDING` and failure reason.
+4. Background worker `processSyncOutbox()` reconciles pending outbox records with exponential backoff once the cluster recovers.
+
+### 4. Search Eligibility & Privacy Gate
+To prevent leaking unmoderated, discontinued, or draft products:
+- Only products with `status === 'active' && !isDeleted` from approved vendors are indexed.
+- Transitioning a product to `draft`, `inactive`, or soft-deleting it automatically dispatches `deleteProductFromIndex()`, immediately evicting it from search results.
+
+### 5. Stream-Based Bulk Reindexing (`POST /api/admin/products/reindex`)
+- Protected by `authenticate` and `requireRole(['admin'])`.
+- Streams millions of MongoDB products using Mongoose cursors with configurable batching (`batchSize: 100`) to avoid memory bloat.
+- Supports atomic index recreation (`recreate: true`) with zero downtime using index mapping bootstrap.
+
+---
+
+## 🔎 Phase 5B: Advanced Product Search & Faceted Filtering
+
+Phase 5B delivers production-grade product search, real-time autocomplete suggestions, and faceted filtering powered by Elasticsearch.
+
+### 1. Endpoints
+- **Product Search**: `GET /api/products/search`
+- **Autocomplete Suggestions**: `GET /api/products/search/suggestions`
+
+### 2. Supported Query Parameters (`GET /api/products/search`)
+| Parameter | Type | Constraints / Validation | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `q` | `string` | Max 200 chars, trimmed | — | Keyword query matching name, brand, description |
+| `category` | `string` | Valid Category ID or exact name | — | Category filter |
+| `brand` | `string` | Max 100 chars | — | Exact brand filter |
+| `minPrice` | `number` | $\ge 0$, must be $\le$ maxPrice | — | Minimum price lower bound |
+| `maxPrice` | `number` | $\ge 0$, must be $\ge$ minPrice | — | Maximum price upper bound |
+| `minRating` | `number` | 0.0 to 5.0 | — | Minimum rating filter |
+| `inStock` | `boolean` | `true` or `false` | — | In-stock availability (`stock > 0`) |
+| `sort` | `string` | `relevance`, `price_asc`, `price_desc`, `newest`, `rating` | `relevance` | Ordering algorithm |
+| `page` | `integer`| $\ge 1$ | `1` | Pagination page number |
+| `limit` | `integer`| $\ge 1$ and $\le 100$ | `20` | Results per page |
+
+### 3. Autocomplete Suggestions (`GET /api/products/search/suggestions`)
+| Parameter | Type | Constraints | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `q` | `string` | Required, min 1 char, max 100 chars | — | Prefix text query |
+| `limit` | `integer`| Min 1, Max 20 | `8` | Maximum suggestions |
+
+### 4. Elasticsearch Query Architecture & Relevance Scoring
+- **Multi-Field Boosting**: `name.keyword^6`, `name^4`, `match_phrase^5`, `brand^2`, `categoryName^1.5`, `description^1`.
+- **Typo Tolerance**: `fuzziness: "AUTO"` with `prefix_length: 2` handles user spelling errors without noisy false positives.
+- **Strict Privacy Gate**: Query filters enforce `{ term: { status: 'active' } }`. Draft, inactive, and deleted items are completely excluded.
+- **Faceted Aggregations**: Real-time category terms, brand terms, and price min/max calculations are computed dynamically.
+- **Resilient Fallback**: Cluster connection errors return a clean HTTP 503 (`SERVICE_UNAVAILABLE`) without leaking credentials or internal stack traces.
+
+### 5. Frontend Search Experience
+- **Debounced Live Search**: Real-time query execution with 280ms debounce and `AbortController` cancellation for outdated requests.
+- **Interactive Suggestions**: Autocomplete dropdown with item previews, prices, and keyboard navigation (`ArrowDown`, `ArrowUp`, `Enter`, `Escape`).
+- **Dynamic Facets Sidebar**: Category counts, brand checkboxes, min/max price bounds with validation, rating filter, and in-stock toggle.
+- **URL Synchronization**: Deep-linking support via `window.history.replaceState` preserving search state across refreshes.
+- **State States**: Loading skeleton placeholders, empty results box with reset button, and error state with retry.
+
+---
+
 ## 🧪 Automated Testing
 
-Phase 2A, Phase 2B, Phase 3A, and Phase 3B include fully automated integration test suites executed with `mongodb-memory-server` and `supertest` (**50 total tests, 100% pass rate**):
+Phases 2A through 5B include comprehensive automated integration test suites executed with `mongodb-memory-server` and `supertest` (**108 total tests, 100% pass rate**):
 
 ```bash
-# Run all test suites across the monorepo:
+# Run all 108 tests across the entire platform:
 npm run test
 
 # Or run individual test suites:
@@ -266,37 +460,89 @@ npm run test:auth      # Phase 2A: Authentication, Tokens, Cookies (10 tests)
 npm run test:rbac      # Phase 2B: RBAC, Route Guards, Ownership (11 tests)
 npm run test:vendor    # Phase 3A: Vendor Onboarding, Status, Application Guards (14 tests)
 npm run test:approval  # Phase 3B: Admin Approval, Dashboard, State Transitions (15 tests)
+npm run test:product   # Phase 4A: Product CRUD, Inventory, SKU, Moderation (15 tests)
+npm run test:images    # Phase 4B: S3 Uploads, Previews, Replacements, Deletions (16 tests)
+npm run test:elastic   # Phase 5A: Elasticsearch Setup & Product Indexing (12 tests)
+npm run test:search    # Phase 5B: Advanced Search, Autocomplete & Faceted Filters (15 tests)
 ```
 
-### Verified Admin Approval Test Suite (15 Tests)
-1. `GET /api/admin/vendors?status=pending` $\rightarrow$ Admin successfully lists filtered applications (`200 OK`).
-2. `GET /api/admin/vendors` $\rightarrow$ Customer blocked from listing applications (`403 Forbidden`).
-3. `PATCH /api/admin/vendors/:id/approve` $\rightarrow$ Non-admin blocked from approval (`403 Forbidden`).
-4. `PATCH /api/admin/vendors/:id/approve` $\rightarrow$ Admin successfully approves pending vendor (`200 OK`).
-5. Role promotion verification $\rightarrow$ User role atomically upgraded to `'vendor'` in MongoDB.
-6. `PATCH /api/admin/vendors/:id/approve` $\rightarrow$ Duplicate approval blocked (`409 Conflict`).
-7. `PATCH /api/admin/vendors/:id/reject` $\rightarrow$ Admin rejects application with reason (`200 OK`).
-8. Role preservation verification $\rightarrow$ Rejected applicant remains a `'customer'`.
-9. `GET /api/vendor/dashboard` $\rightarrow$ Approved vendor retrieves store data and initial zero metrics (`200 OK`).
-10. `GET /api/vendor/dashboard` $\rightarrow$ Pending / unapproved applicant blocked (`403 Forbidden`).
-11. `PATCH /api/vendor/store` $\rightarrow$ Approved vendor updates store description & contact (`200 OK`).
-12. Unauthenticated requests $\rightarrow$ Blocked with `401 Unauthorized`.
-13. Unauthorized role requests $\rightarrow$ Blocked with `403 Forbidden`.
-14. Malformed application IDs $\rightarrow$ Safely rejected (`400 Bad Request`).
-15. Illegal state transitions $\rightarrow$ Rejecting an approved vendor blocked (`400 Bad Request`).
+### Verified Phase 5B Search & Filtering Test Suite (15 Tests)
+1. **Keyword Search**: `q=wireless` returns matching products sorted by relevance score.
+2. **Multi-Field Matching**: Searches across product name, brand, and description simultaneously.
+3. **Category Filtering**: Filters catalog by category ObjectId or exact category name.
+4. **Brand Filtering**: `brand=Sony` strictly restricts results to selected merchant brand.
+5. **Price Range Filtering**: Bounds catalog products within `minPrice` and `maxPrice`.
+6. **Price Inversion Validation**: Inverted price range (`minPrice > maxPrice`) safely rejected with HTTP 422.
+7. **Negative & Invalid Param Validation**: Negative numbers and unsupported sort options rejected with HTTP 422.
+8. **In-Stock Availability**: `inStock=true` excludes zero-stock items.
+9. **Price Sorting**: `sort=price_asc` and `sort=price_desc` verified.
+10. **Newest Sorting**: `sort=newest` returns most recently created items first.
+11. **Pagination**: Verifies page slicing, limit constraints, and `totalPages` calculation.
+12. **Autocomplete Suggestions**: `GET /api/products/search/suggestions?q=wire` returns prefix matches and rejects empty query.
+13. **Visibility Gate**: Unpublished, draft, and soft-deleted items strictly excluded from search results.
+14. **Faceted Aggregations**: Aggregations return dynamic counts for categories, brands, and price min/max stats.
+15. **Elasticsearch Unavailable Resilience**: Cluster connection failures return HTTP 503 Service Unavailable without crashing or leaking sensitive info.
+
+### Verified Phase 5A Elasticsearch Test Suite (12 Tests)
+1. **Cluster Verification**: Verifies Elasticsearch client connection via ping (`GET /api/health/elasticsearch`).
+2. **Index Initialization**: Verifies creation of `marketplace_products` with custom n-gram analyzers and schema mappings.
+3. **Real-time Create Sync**: Creating an active product via `POST /api/products` automatically indexes the document in Elasticsearch.
+4. **Real-time Update Sync**: Modifying price or title updates the document in Elasticsearch immediately.
+5. **Soft-Delete Sync**: Deleting a product removes the document from Elasticsearch search results while preserving it in MongoDB.
+6. **Deactivation Eviction**: Changing status from `active` to `inactive` automatically evicts the product from Elasticsearch.
+7. **Bulk Indexing**: Bulk index processing batches multiple documents with memory safety.
+8. **Granular Error Handling**: Document-level failures in bulk batches are captured individually without failing the entire batch.
+9. **Admin Bulk Reindexing**: `POST /api/admin/products/reindex` reconstructs the entire search catalog from MongoDB with cursor streaming.
+10. **Offline ES Resilience (Outbox)**: MongoDB writes succeed even when Elasticsearch is unreachable; failed operations are written to `ProductSyncOutbox` and reconciled on reconnection.
+11. **Idempotent Upsert**: Document IDs match MongoDB `_id`, preventing duplicate search results.
+12. **Search Eligibility Gate**: Inactive and draft products are strictly excluded from public search indexing.
+
+### Verified Phase 4B Image Upload Test Suite (16 Tests)
+1. Approved vendor uploads one image $\rightarrow$ S3 key generated, metadata returned (`201 Created`).
+2. Approved vendor uploads multiple images $\rightarrow$ Batch upload saved, all metadata returned (`201 Created`).
+3. Customer attempting image upload $\rightarrow$ Blocked with `403 Forbidden`.
+4. Pending applicant attempting image upload $\rightarrow$ Blocked with `403 Forbidden`.
+5. Vendor B attempting upload to Vendor A's product $\rightarrow$ Tampering blocked with `403 Forbidden`.
+6. Invalid file type (executable/text) rejected $\rightarrow$ Blocked with `400 Bad Request`.
+7. Oversized image (>5 MB) rejected $\rightarrow$ Blocked with `400 Bad Request`.
+8. Empty (0-byte) image and missing files rejected $\rightarrow$ Blocked with `400 Bad Request`.
+9. Image limit (5 max) enforced $\rightarrow$ Extra images rejected with `400 Bad Request`.
+10. Image replacement works $\rightarrow$ New image uploaded, old S3 object deleted (`200 OK`).
+11. Image deletion works $\rightarrow$ MongoDB reference removed, S3 object deleted (`200 OK`).
+12. MongoDB image references correct $\rightarrow$ Verified `key`, `mimeType`, `sizeBytes`, `uploadedAt`.
+13. Presigned URL generation works $\rightarrow$ Fresh presigned GET URLs generated with signatures (`200 OK`).
+14. AWS S3 upload failure handled safely $\rightarrow$ Returns `500 Internal Server Error`, zero DB corruption.
+15. DB failure triggers S3 cleanup $\rightarrow$ Newly uploaded S3 objects rolled back immediately.
+16. Unauthorized image deletion blocked $\rightarrow$ Cross-vendor deletion blocked with `403 Forbidden`.
+
+### Verified Phase 4A Product & Inventory Test Suite (15 Tests)
+1. Approved vendor creates a product $\rightarrow$ Assigned SKU, category validated, HTTP `201 Created`.
+2. Customer attempting to create a product $\rightarrow$ Blocked with `403 Forbidden`.
+3. Pending applicant attempting to create a product $\rightarrow$ Blocked with `403 Forbidden`.
+4. Public visitor browsing active product catalog $\rightarrow$ Successfully returned with pagination (`200 OK`).
+5. Vendor retrieving their own product listings $\rightarrow$ Only owned products returned (`200 OK`).
+6. Vendor attempting to view another vendor's draft product $\rightarrow$ Shielded with `404 Not Found`.
+7. Vendor updating their own product details $\rightarrow$ Successfully updated (`200 OK`).
+8. Cross-vendor product update tampering $\rightarrow$ Blocked with `403 Forbidden`.
+9. Cross-vendor product deletion tampering $\rightarrow$ Blocked with `403 Forbidden`.
+10. Validating rejection of negative/zero price $\rightarrow$ Blocked with `422 Validation Error`.
+11. Validating rejection of negative stock count $\rightarrow$ Blocked with `422 Validation Error`.
+12. Creating product under inactive/discontinued category $\rightarrow$ Blocked with `400 Bad Request`.
+13. Admin moderating and deactivating a product $\rightarrow$ Successfully deactivated and removed from public catalog.
+14. Testing pagination limits and price ascending sort $\rightarrow$ Verified (`200 OK`).
+15. Testing atomic inventory reduction & negative stock prevention $\rightarrow$ Blocked with `400 Bad Request` when stock is insufficient; successfully reduced when stock is available.
 
 ---
 
-## 🗺️ Future Integrations & Dependency Plan
+## 🗺️ Roadmap & Integration Status
 
-External service integrations are planned for subsequent phases and will be introduced modularly:
-
-| Service | Target Phase | Integration Strategy |
-| :--- | :--- | :--- |
-| **Redis** | Phase 2B & 6B | Session blacklist, sliding-window rate limiting, and distributed checkout mutexes using `ioredis`. |
-| **Elasticsearch** | Phase 6A | Full-text catalog search and faceted aggregations synched via MongoDB Change Streams. |
-| **AWS S3** | Phase 5A | Pre-signed client direct image uploads (`@aws-sdk/s3-request-presigner`) to avoid server memory spikes. |
-| **Stripe / Razorpay** | Phase 8B & 10B | Multi-party split checkout, escrow holding, and automated seller payouts via official SDKs. |
+| Service | Target Phase | Status | Integration Strategy |
+| :--- | :--- | :--- | :--- |
+| **AWS S3** | Phase 4B | ✅ **Completed** | Private bucket storage, image validation, pre-signed GET URLs, atomic DB failure rollback. |
+| **Elasticsearch** | Phase 5A | ✅ **Completed** | Dedicated search engine (`marketplace_products`), custom analyzers, outbox sync, cursor reindex. |
+| **Search API (ES)** | Phase 5B | ✅ **Completed** | Full-text search endpoint, fuzzy queries, auto-suggestions, faceted price/category filters. |
+| **Redis** | Phase 6 | 📅 Planned | Session blacklist, sliding-window rate limiting, and distributed checkout mutexes using `ioredis`. |
+| **Stripe / Razorpay** | Phase 8 & 10 | 📅 Planned | Multi-party split checkout, escrow holding, and automated seller payouts via official SDKs. |
 
 ---
 

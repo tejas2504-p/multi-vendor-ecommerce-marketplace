@@ -3,7 +3,9 @@ import { authenticate } from '../middlewares/auth.middleware';
 import { authorize } from '../middlewares/rbac.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import { rejectVendorSchema } from '../validators/vendor.validator';
+import { updateProductStatusSchema } from '../validators/product.validator';
 import { AdminVendorController } from '../controllers/adminVendor.controller';
+import { ProductController } from '../controllers/product.controller';
 import { ApiResponse } from '../utils/apiResponse';
 
 const router = Router();
@@ -77,6 +79,40 @@ router.patch(
   authorize('admin'),
   validateBody(rejectVendorSchema),
   AdminVendorController.rejectApplication
+);
+
+/**
+ * GET /api/admin/products
+ * List all marketplace products across merchants
+ */
+router.get(
+  '/products',
+  authenticate,
+  authorize('admin'),
+  ProductController.adminList
+);
+
+/**
+ * PATCH /api/admin/products/:id/status
+ * Administrative product moderation (active, inactive, draft)
+ */
+router.patch(
+  '/products/:id/status',
+  authenticate,
+  authorize('admin'),
+  validateBody(updateProductStatusSchema),
+  ProductController.adminUpdateStatus
+);
+
+/**
+ * POST /api/admin/products/reindex
+ * Administrative bulk reindexing of products from MongoDB to Elasticsearch
+ */
+router.post(
+  '/products/reindex',
+  authenticate,
+  authorize('admin'),
+  ProductController.adminReindex
 );
 
 export const adminRoutes = router;

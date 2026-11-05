@@ -10,6 +10,8 @@ import { customerRoutes } from './routes/customer.routes';
 import { vendorRoutes } from './routes/vendor.routes';
 import { vendorProfileRoutes } from './routes/vendorProfile.routes';
 import { adminRoutes } from './routes/admin.routes';
+import { categoryRoutes } from './routes/category.routes';
+import { productRoutes } from './routes/product.routes';
 import { v1Router } from './routes/v1';
 import { notFoundMiddleware } from './middlewares/notFound.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
@@ -73,6 +75,12 @@ export const createApp = (): Application => {
   app.use('/vendors', vendorProfileRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/admin', adminRoutes);
+
+  // Catalog & Product endpoints
+  app.use('/api/categories', categoryRoutes);
+  app.use('/categories', categoryRoutes);
+  app.use('/api/products', productRoutes);
+  app.use('/products', productRoutes);
 
   // API v1 Router
   app.use('/api/v1', v1Router);

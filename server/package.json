@@ -12,12 +12,18 @@
     "test:rbac": "tsx src/tests/runRbacTests.ts",
     "test:vendor": "tsx src/tests/runVendorOnboardingTests.ts",
     "test:approval": "tsx src/tests/runAdminVendorApprovalTests.ts",
-    "test": "tsx src/tests/runAuthTests.ts && tsx src/tests/runRbacTests.ts && tsx src/tests/runVendorOnboardingTests.ts && tsx src/tests/runAdminVendorApprovalTests.ts"
+    "test:product": "tsx src/tests/runProductTests.ts",
+    "test:images": "tsx src/tests/runImageUploadTests.ts",
+    "test:elastic": "tsx src/tests/runElasticsearchTests.ts",
+    "test:search": "tsx src/tests/runProductSearchTests.ts",
+    "test": "tsx src/tests/runAuthTests.ts && tsx src/tests/runRbacTests.ts && tsx src/tests/runVendorOnboardingTests.ts && tsx src/tests/runAdminVendorApprovalTests.ts && tsx src/tests/runProductTests.ts && tsx src/tests/runImageUploadTests.ts && tsx src/tests/runElasticsearchTests.ts && tsx src/tests/runProductSearchTests.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.540.0",
     "@aws-sdk/s3-request-presigner": "^3.540.0",
     "@elastic/elasticsearch": "^8.13.0",
+    "@types/multer": "^2.3.0",
+    "@types/uuid": "^10.0.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -30,8 +36,10 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.3.1",
     "morgan": "^1.10.0",
+    "multer": "^2.5.0",
     "rate-limit-redis": "^4.2.0",
     "stripe": "^15.1.0",
+    "uuid": "^14.0.3",
     "winston": "^3.13.0",
     "zod": "^3.22.4"
   },
