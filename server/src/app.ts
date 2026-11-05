@@ -13,6 +13,9 @@ import { adminRoutes } from './routes/admin.routes';
 import { categoryRoutes } from './routes/category.routes';
 import { productRoutes } from './routes/product.routes';
 import { cartRoutes } from './routes/cart.routes';
+import { addressRoutes } from './routes/address.routes';
+import { checkoutRoutes } from './routes/checkout.routes';
+import { orderRoutes } from './routes/order.routes';
 import { v1Router } from './routes/v1';
 import { notFoundMiddleware } from './middlewares/notFound.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
@@ -86,6 +89,16 @@ export const createApp = (): Application => {
   // Cart endpoints
   app.use('/api/cart', cartRoutes);
   app.use('/cart', cartRoutes);
+
+  // Address endpoints
+  app.use('/api/addresses', addressRoutes);
+  app.use('/addresses', addressRoutes);
+
+  // Checkout & Order endpoints
+  app.use('/api/checkout', checkoutRoutes);
+  app.use('/checkout', checkoutRoutes);
+  app.use('/api/orders', orderRoutes);
+  app.use('/orders', orderRoutes);
 
   // API v1 Router
   app.use('/api/v1', v1Router);

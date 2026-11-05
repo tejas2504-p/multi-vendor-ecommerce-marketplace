@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middlewares/auth.middleware';
 import { authorize } from '../middlewares/rbac.middleware';
-import { validateBody } from '../middlewares/validate.middleware';
+import { validateBody, validateParams } from '../middlewares/validate.middleware';
 import { rejectVendorSchema } from '../validators/vendor.validator';
 import { updateProductStatusSchema } from '../validators/product.validator';
+import { orderParamSchema, adminUpdateOrderStatusSchema } from '../validators/order.validator';
 import { AdminVendorController } from '../controllers/adminVendor.controller';
 import { ProductController } from '../controllers/product.controller';
+import { OrderController } from '../controllers/order.controller';
 import { ApiResponse } from '../utils/apiResponse';
 
 const router = Router();
@@ -113,6 +115,43 @@ router.post(
   authenticate,
   authorize('admin'),
   ProductController.adminReindex
+);
+
+/**
+ * GET /api/admin/orders
+ * Protected: Admin view of all platform parent orders with filtering
+ */
+router.get('/orders', authenticate, authorize('admin'), OrderController.getAdminOrders);
+
+/**
+ * GET /api/admin/orders/:orderId
+ * Protected: Admin view of specific order details
+ */
+router.get(
+  '/orders/:orderId',
+  authenticate,
+  authorize('admin'),
+  validateParams(orderParamSchema),
+  OrderController.getAdminOrderById
+);
+
+/**
+ * GET /api/admin/vendor-orders
+ * Protected: Admin overview of all vendor orders across platform
+ */
+router.get('/vendor-orders', authenticate, authorize('admin'), OrderController.getAdminVendorOrders);
+
+/**
+ * PATCH /api/admin/orders/:orderId/status
+ * Protected: Admin status override of parent order
+ */
+router.patch(
+  '/orders/:orderId/status',
+  authenticate,
+  authorize('admin'),
+  validateParams(orderParamSchema),
+  validateBody(adminUpdateOrderStatusSchema),
+  OrderController.adminUpdateOrderStatus
 );
 
 export const adminRoutes = router;

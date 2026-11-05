@@ -21,7 +21,9 @@
     "test:elastic": "tsx src/tests/runElasticsearchTests.ts",
     "test:search": "tsx src/tests/runProductSearchTests.ts",
     "test:cart": "tsx src/tests/runCartTests.ts",
-    "test": "tsx src/tests/runAuthTests.ts && tsx src/tests/runRbacTests.ts && tsx src/tests/runVendorOnboardingTests.ts && tsx src/tests/runAdminVendorApprovalTests.ts && tsx src/tests/runProductTests.ts && tsx src/tests/runImageUploadTests.ts && tsx src/tests/runElasticsearchTests.ts && tsx src/tests/runProductSearchTests.ts && tsx src/tests/runCartTests.ts"
+    "test:checkout": "tsx src/tests/runCheckoutTests.ts",
+    "test:multivendor": "tsx src/tests/runMultiVendorOrderTests.ts",
+    "test": "tsx src/tests/runAuthTests.ts && tsx src/tests/runRbacTests.ts && tsx src/tests/runVendorOnboardingTests.ts && tsx src/tests/runAdminVendorApprovalTests.ts && tsx src/tests/runProductTests.ts && tsx src/tests/runImageUploadTests.ts && tsx src/tests/runElasticsearchTests.ts && tsx src/tests/runProductSearchTests.ts && tsx src/tests/runCartTests.ts && tsx src/tests/runCheckoutTests.ts && tsx src/tests/runMultiVendorOrderTests.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.540.0",

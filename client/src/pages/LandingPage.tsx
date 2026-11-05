@@ -18,6 +18,8 @@ import { Badge } from '../components/ui/Badge';
 import { ProductSearchExperience } from '../components/search/ProductSearchExperience';
 import { AuthRoleTestingPanel } from '../components/auth/AuthRoleTestingPanel';
 import { VendorPortalTestingPanel } from '../components/vendor/VendorPortalTestingPanel';
+import { VendorOrdersManager } from '../components/vendor/VendorOrdersManager';
+import { AdminOrdersManager } from '../components/admin/AdminOrdersManager';
 
 export const LandingPage: React.FC = () => {
   const { activeRole, setActiveRole } = useApp();
@@ -180,6 +182,28 @@ export const LandingPage: React.FC = () => {
 
       {/* Phase 5B: Advanced Elasticsearch Catalog Search & Discovery */}
       <ProductSearchExperience />
+
+      {/* Phase 7B: Vendor Order Fulfillment Panel */}
+      {(activeRole === 'vendor' || activeRole === 'admin') && (
+        <section className="space-y-3">
+          <div className="flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <h2 className="text-lg font-bold text-slate-900">Vendor Fulfillment & Shipment Dispatch</h2>
+          </div>
+          <VendorOrdersManager />
+        </section>
+      )}
+
+      {/* Phase 7B: Admin Multi-Vendor Governance Panel */}
+      {activeRole === 'admin' && (
+        <section className="space-y-3">
+          <div className="flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+            <h2 className="text-lg font-bold text-slate-900">Super-Admin Order Governance & Oversight</h2>
+          </div>
+          <AdminOrdersManager />
+        </section>
+      )}
 
       {/* Role Architecture Modules */}
       <section className="space-y-4">

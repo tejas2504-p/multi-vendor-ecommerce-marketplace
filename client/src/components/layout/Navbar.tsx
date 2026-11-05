@@ -1,6 +1,7 @@
 import React from 'react';
-import { ShoppingBag, Store, ShieldCheck, Activity, LogIn, LogOut } from 'lucide-react';
+import { ShoppingBag, Store, ShieldCheck, Activity, LogIn, LogOut, ShoppingCart, MapPin, Package } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useCart } from '../../context/CartContext';
 
 interface NavbarProps {
   activeRole: 'customer' | 'vendor' | 'admin';
@@ -9,6 +10,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeRole, onRoleChange }) => {
   const { user, isAuthenticated, logout, openAuthModal } = useApp();
+  const { itemCount, openCart, openAddressModal, openOrdersModal } = useCart();
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200">
@@ -24,7 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeRole, onRoleChange }) => {
                 NexusMarket
               </span>
               <span className="hidden sm:inline-block ml-2 px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200">
-                Phase 5B
+                Phase 7B
               </span>
             </div>
           </div>
@@ -67,12 +69,48 @@ export const Navbar: React.FC<NavbarProps> = ({ activeRole, onRoleChange }) => {
           </div>
 
           {/* Right Header: Auth Actions & Health */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2.5">
             {/* Backend Status indicator */}
             <div className="hidden lg:flex items-center space-x-1.5 text-xs font-medium text-slate-500 pr-2 border-r border-slate-200">
               <Activity className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
               <span>API Active</span>
             </div>
+
+            {/* Shopping Cart Button with Dynamic Badge */}
+            <button
+              onClick={openCart}
+              title="Shopping Cart"
+              className="relative p-2 text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-600 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-sm">
+                  {itemCount > 99 ? '99+' : itemCount}
+                </span>
+              )}
+            </button>
+
+            {/* Saved Addresses Button (When Authenticated) */}
+            {isAuthenticated && (
+              <>
+                <button
+                  onClick={openOrdersModal}
+                  title="My Orders & Shipments"
+                  className="hidden sm:flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition border border-slate-200"
+                >
+                  <Package className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Orders</span>
+                </button>
+                <button
+                  onClick={openAddressModal}
+                  title="Manage Addresses"
+                  className="hidden sm:flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition border border-slate-200"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Addresses</span>
+                </button>
+              </>
+            )}
 
             {/* User Session or Auth Buttons */}
             {isAuthenticated && user ? (

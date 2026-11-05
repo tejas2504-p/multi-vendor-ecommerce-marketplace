@@ -3,11 +3,13 @@ import { authenticate } from '../middlewares/auth.middleware';
 import { authorize } from '../middlewares/rbac.middleware';
 import { requireApprovedVendor } from '../middlewares/vendor.middleware';
 import { authorizeOwnership } from '../middlewares/ownership.middleware';
-import { validateBody } from '../middlewares/validate.middleware';
+import { validateBody, validateParams } from '../middlewares/validate.middleware';
 import { updateVendorProfileSchema } from '../validators/vendor.validator';
 import { updateInventorySchema } from '../validators/product.validator';
+import { vendorOrderParamSchema, updateVendorOrderStatusSchema } from '../validators/order.validator';
 import { VendorController } from '../controllers/vendor.controller';
 import { ProductController } from '../controllers/product.controller';
+import { OrderController } from '../controllers/order.controller';
 import { ApiResponse } from '../utils/apiResponse';
 
 const router = Router();
@@ -67,6 +69,37 @@ router.patch(
   requireApprovedVendor,
   validateBody(updateInventorySchema),
   ProductController.updateInventory
+);
+
+/**
+ * GET /api/vendor/orders
+ * Protected: List authenticated vendor's assigned orders
+ */
+router.get('/orders', authenticate, requireApprovedVendor, OrderController.getVendorOrders);
+
+/**
+ * GET /api/vendor/orders/:vendorOrderId
+ * Protected: Retrieve specific vendor order details
+ */
+router.get(
+  '/orders/:vendorOrderId',
+  authenticate,
+  requireApprovedVendor,
+  validateParams(vendorOrderParamSchema),
+  OrderController.getVendorOrderById
+);
+
+/**
+ * PATCH /api/vendor/orders/:vendorOrderId/status
+ * Protected: Update status and shipment tracking for vendor order
+ */
+router.patch(
+  '/orders/:vendorOrderId/status',
+  authenticate,
+  requireApprovedVendor,
+  validateParams(vendorOrderParamSchema),
+  validateBody(updateVendorOrderStatusSchema),
+  OrderController.updateVendorOrderStatus
 );
 
 /**

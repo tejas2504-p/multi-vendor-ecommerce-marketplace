@@ -1,6 +1,8 @@
-import React from 'react';
-import { Package, CheckCircle2, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Package, CheckCircle2, XCircle, ShoppingCart, Loader2 } from 'lucide-react';
 import { IndexedProduct } from '../../types';
+import { useCart } from '../../context/CartContext';
+import { useApp } from '../../context/AppContext';
 
 interface ProductGridCardProps {
   product: IndexedProduct;
@@ -8,8 +10,28 @@ interface ProductGridCardProps {
 }
 
 export const ProductGridCard: React.FC<ProductGridCardProps> = ({ product, onSelect }) => {
+  const { addToCart } = useCart();
+  const { isAuthenticated, openAuthModal } = useApp();
+  const [isAdding, setIsAdding] = useState(false);
+
   const isOutOfStock = product.stock <= 0;
   const imageUrl = product.images?.[0];
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      openAuthModal('login');
+      return;
+    }
+    try {
+      setIsAdding(true);
+      await addToCart(product.productId, 1);
+    } catch (err) {
+      console.error('Failed to add product to cart', err);
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   return (
     <div
@@ -92,9 +114,16 @@ export const ProductGridCard: React.FC<ProductGridCardProps> = ({ product, onSel
 
           <button
             type="button"
-            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 text-xs font-semibold transition"
+            disabled={isOutOfStock || isAdding}
+            onClick={handleAddToCart}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-40 disabled:hover:bg-indigo-600"
           >
-            View
+            {isAdding ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <ShoppingCart className="w-3.5 h-3.5" />
+            )}
+            <span>Add</span>
           </button>
         </div>
       </div>

@@ -721,8 +721,148 @@ npm run test:cart      # Phase 6A: Shopping Cart Backend & Dynamic Pricing (18 t
 | **Elasticsearch** | Phase 5A | ✅ **Completed** | Dedicated search engine (`marketplace_products`), custom analyzers, outbox sync, cursor reindex. |
 | **Search API (ES)** | Phase 5B | ✅ **Completed** | Full-text search endpoint, fuzzy queries, auto-suggestions, faceted price/category filters. |
 | **Shopping Cart Backend** | Phase 6A | ✅ **Completed** | Isolated customer carts, live dynamic pricing, stock limit validation, and role protection. |
-| **Redis** | Phase 6B | 📅 Planned | Session blacklist, sliding-window rate limiting, and distributed checkout mutexes using `ioredis`. |
+| **Redis Cache** | Phase 6B | ✅ **Completed** | Redis cluster caching, live price invalidation, graceful fallback to MongoDB, health checks. |
+| **Checkout & Addresses** | Phase 7A | ✅ **Completed** | Customer address CRUD, default fallback, atomic stock deduction, snapshot immutability, idempotency. |
 | **Stripe / Razorpay** | Phase 8 & 10 | 📅 Planned | Multi-party split checkout, escrow holding, and automated seller payouts via official SDKs. |
+
+---
+
+## 📦 Phase 7A – Checkout and Address Management
+
+### 1. Delivery Address API Endpoints
+
+All address endpoints require authenticated Customer or Admin credentials (`authenticate`, `authorize('customer', 'admin')`).
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/addresses` | Add a new delivery address (auto-default if first address) |
+| `GET` | `/api/addresses` | Retrieve customer addresses (default address returned first) |
+| `GET` | `/api/addresses/:id` | Retrieve specific address (verifies customer ownership) |
+| `PATCH`| `/api/addresses/:id` | Update address fields (verifies customer ownership) |
+| `PATCH`| `/api/addresses/:id/default` | Set address as primary default (unsets previous default) |
+| `DELETE`| `/api/addresses/:id` | Delete address (safely promotes remaining address to default) |
+
+#### Address Creation Example (`POST /api/addresses`)
+```json
+// Request Body
+{
+  "fullName": "Alice Customer",
+  "phone": "+1 555-123-4567",
+  "addressLine1": "742 Evergreen Terrace",
+  "addressLine2": "Apt 2B",
+  "city": "Springfield",
+  "state": "IL",
+  "postalCode": "62704",
+  "country": "United States",
+  "isDefault": true
+}
+
+// Response (201 Created)
+{
+  "success": true,
+  "message": "Delivery address added successfully",
+  "data": {
+    "id": "6aecd95bce255c4ab079762a",
+    "userId": "6aecd95ace255c4ab079761e",
+    "fullName": "Alice Customer",
+    "phone": "+1 555-123-4567",
+    "addressLine1": "742 Evergreen Terrace",
+    "addressLine2": "Apt 2B",
+    "city": "Springfield",
+    "state": "IL",
+    "postalCode": "62704",
+    "country": "United States",
+    "isDefault": true,
+    "createdAt": "2026-11-06T00:50:00.000Z",
+    "updatedAt": "2026-11-06T00:50:00.000Z"
+  }
+}
+```
+
+### 2. Checkout & Order API Endpoints
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/checkout` | Convert cart into an order, deduct stock atomically, clear cart |
+| `GET` | `/api/checkout/orders` | Retrieve authenticated customer's past orders |
+| `GET` | `/api/checkout/orders/:id` | Retrieve specific order snapshot details |
+
+#### Checkout Request Example (`POST /api/checkout`)
+```json
+// Request Body
+{
+  "addressId": "6aecd95bce255c4ab079762a",
+  "idempotencyKey": "chk-9876543210-abcdef"
+}
+
+// Response (201 Created)
+{
+  "success": true,
+  "message": "Order placed successfully",
+  "data": {
+    "id": "6aecd95cce255c4ab0797632",
+    "orderNumber": "ORD-MW3XXKSY-7AA",
+    "userId": "6aecd95ace255c4ab079761e",
+    "deliveryAddress": {
+      "fullName": "Alice Customer",
+      "phone": "+1 555-123-4567",
+      "addressLine1": "742 Evergreen Terrace",
+      "addressLine2": "Apt 2B",
+      "city": "Springfield",
+      "state": "IL",
+      "postalCode": "62704",
+      "country": "United States"
+    },
+    "items": [
+      {
+        "productId": "6aecd95ace255c4ab0797620",
+        "vendorId": "6aecd95ace255c4ab0797618",
+        "productName": "Sony WH-1000XM5",
+        "productImage": "products/vendor1/headphones.jpg",
+        "quantity": 2,
+        "unitPrice": 399.99,
+        "itemSubtotal": 799.98
+      }
+    ],
+    "subtotal": 799.98,
+    "shippingAmount": 0,
+    "discountAmount": 0,
+    "totalAmount": 799.98,
+    "paymentStatus": "pending",
+    "orderStatus": "confirmed",
+    "createdAt": "2026-11-06T00:50:00.000Z",
+    "updatedAt": "2026-11-06T00:50:00.000Z"
+  }
+}
+```
+
+### 3. Key Business Rules & Reliability
+1. **Never Trust Frontend Values**: Price calculations, vendor IDs, address contents, and totals are computed strictly on the backend from primary MongoDB data.
+2. **Snapshot Immutability**: Historical orders freeze both delivery address and product metadata (name, SKU, unit price, image) so future vendor edits never alter completed transactions.
+3. **Atomic Stock & Concurrency**: Inventory updates use conditional atomic decrements (`{ stock: { $gte: quantity } }`) with automatic compensation rollback on failures, guaranteeing zero stock leakage and zero negative inventories.
+4. **Idempotency Protection**: Repeated submissions with the same `idempotencyKey` return the original order without double-charging or deducting inventory twice.
+5. **Safe Default Address Reassignment**: When a customer deletes their default address, the system automatically promotes their most recent remaining address to default.
+
+---
+
+### Verified Phase 7A Checkout & Address Test Suite (16 Tests)
+Run using `npm run test:checkout`:
+1. Customer creates primary address $\rightarrow$ Successfully created & auto-assigned default (`201 Created`).
+2. Create second address & retrieve list $\rightarrow$ Retrieved with default address sorted first (`200 OK`).
+3. Customer updates an address $\rightarrow$ Fields successfully updated (`200 OK`).
+4. Set a default address $\rightarrow$ Target address marked default; previous default safely unset (`200 OK`).
+5. Delete default address $\rightarrow$ Deleted safely; remaining address promoted to default (`200 OK`).
+6. Cross-customer address tampering $\rightarrow$ Access and deletion blocked with `403 Forbidden`.
+7. Checkout with valid cart $\rightarrow$ Order created with accurate snapshots, orderNumber and free shipping (`201 Created`).
+8. Checkout with invalid address ID $\rightarrow$ Blocked with `404 Not Found`.
+9. Checkout with insufficient stock $\rightarrow$ Blocked with `400 Bad Request`.
+10. Checkout with inactive product $\rightarrow$ Blocked with `400 Bad Request`.
+11. Checkout with unapproved vendor $\rightarrow$ Blocked with `400 Bad Request`.
+12. Backend price calculations & flat shipping (< $100) $\rightarrow$ Verified accurate totals (`201 Created`).
+13. Inventory stock decrement $\rightarrow$ Stock atomically decremented in database (50 $\rightarrow$ 48).
+14. Cart clearing after checkout $\rightarrow$ Persistent cart and Redis cache emptied (`itemCount: 0`).
+15. Failed checkout leaves zero partial state $\rightarrow$ Inventory and orders completely untouched.
+16. Duplicate checkout submissions (idempotency) $\rightarrow$ Returns original order and prevents double inventory decrement.
 
 ---
 
