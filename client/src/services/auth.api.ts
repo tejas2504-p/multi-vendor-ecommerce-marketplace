@@ -61,5 +61,41 @@ export const authApi = {
     const res = await apiClient.get('/api/vendors/status');
     return res.data;
   },
+
+  /**
+   * Admin: List vendor applications.
+   */
+  listAdminVendorApplications: async (status?: string): Promise<any> => {
+    const res = await apiClient.get('/api/admin/vendors', {
+      params: status ? { status } : {},
+    });
+    return res.data;
+  },
+
+  /**
+   * Admin: Approve a pending vendor application.
+   */
+  approveVendorApplication: async (id: string): Promise<any> => {
+    const res = await apiClient.patch(`/api/admin/vendors/${id}/approve`);
+    return res.data;
+  },
+
+  /**
+   * Admin: Reject a pending vendor application.
+   */
+  rejectVendorApplication: async (id: string, rejectionReason: string): Promise<any> => {
+    const res = await apiClient.patch(`/api/admin/vendors/${id}/reject`, {
+      rejectionReason,
+    });
+    return res.data;
+  },
+
+  /**
+   * Vendor Dashboard data.
+   */
+  getVendorDashboard: async (): Promise<any> => {
+    const res = await apiClient.get('/api/vendor/dashboard');
+    return res.data;
+  },
 };
 

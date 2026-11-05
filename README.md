@@ -447,12 +447,170 @@ Phase 5B delivers production-grade product search, real-time autocomplete sugges
 
 ---
 
+## 🛒 Phase 6A: Shopping Cart Backend
+
+Phase 6A implements a production-grade shopping cart backend featuring dynamic price evaluation, customer-isolated carts, live stock validation, and strict role guards.
+
+### 1. Cart API Endpoints
+
+| Method | Endpoint | Access / Role | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/cart/add` | Authenticated Customer / Admin | Add a product to the cart (or increment quantity if already in cart). |
+| `GET` | `/api/cart` | Authenticated Customer / Admin | Retrieve the authenticated user's cart with live prices, subtotal, and total. |
+| `PATCH` | `/api/cart/update/:productId` | Authenticated Customer / Admin | Update item quantity in cart (rejects $< 1$ or exceeding available stock). |
+| `DELETE` | `/api/cart/remove/:productId` | Authenticated Customer / Admin | Remove a specific product line item from the cart. |
+| `DELETE` | `/api/cart/clear` | Authenticated Customer / Admin | Remove all items and empty the customer's cart. |
+
+> **RESTful Aliases**: For maximum compatibility, the API also supports `/api/cart/items` (POST), `/api/cart/items/:productId` (PATCH / DELETE), and `DELETE /api/cart`.
+
+### 2. Authentication & Authorization Requirements
+- **Authentication**: Requires a valid JWT token passed via HTTP-only cookie (`accessToken`) or `Authorization: Bearer <token>` header.
+- **Allowed Roles**: `customer` and `admin`.
+- **Blocked Roles**: `vendor` accounts are strictly forbidden from modifying or accessing customer carts (`403 Forbidden`).
+- **Cart Isolation**: Customers can never access or mutate another customer's cart; the user identity is extracted strictly from the verified JWT payload (`req.user.id`).
+
+### 3. Core Cart Business Rules
+1. **Dynamic Live Pricing (No Stale Prices)**: Product prices are **never** stored permanently in the MongoDB `Cart` model. Unit prices and subtotals are dynamically resolved from the authoritative `Product` collection at calculation time. If a merchant changes their product price, the customer's cart immediately reflects the updated price on the next view or operation.
+2. **Availability & Approval Gate**: Only products that are `status: 'active'`, `isDeleted: false`, and belong to an officially approved vendor (`VendorProfile.status === 'approved'`) can be added to a cart.
+3. **Stock & Quantity Limits**:
+   - Quantities must be positive integers ($\ge 1$).
+   - Adding or updating items cannot exceed current available `product.stock`.
+   - If requested quantity exceeds stock, the server rejects the request with HTTP 400 Bad Request indicating the remaining stock.
+4. **Deactivated / Deleted Product Handling**:
+   - If a product is soft-deleted or removed from MongoDB after being placed in a cart, it is automatically purged on retrieval.
+   - If a product is deactivated or its vendor application is suspended, the item is flagged with `isAvailable: false` and excluded from `subtotal` and `total` calculations.
+
+### 4. Request & Response Examples
+
+#### Add Product to Cart (`POST /api/cart/add`)
+**Request Body**:
+```json
+{
+  "productId": "6aecb063abbabdeb7f90565f",
+  "quantity": 2
+}
+```
+**Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "message": "Product added to cart successfully",
+  "data": {
+    "id": "6aecc300ab5678cd90123456",
+    "userId": "6aecc15c17648cce570fa051",
+    "items": [
+      {
+        "id": "6aecc300ab5678cd90123457",
+        "productId": "6aecb063abbabdeb7f90565f",
+        "name": "Mechanical Gaming Keyboard",
+        "sku": "KEY-MECH-4921",
+        "brand": "KeyTech",
+        "images": [],
+        "unitPrice": 89.99,
+        "quantity": 2,
+        "itemTotal": 179.98,
+        "stock": 15,
+        "isAvailable": true
+      }
+    ],
+    "itemCount": 2,
+    "uniqueItemCount": 1,
+    "subtotal": 179.98,
+    "total": 179.98,
+    "createdAt": "2026-11-05T17:45:00.000Z",
+    "updatedAt": "2026-11-05T17:45:00.000Z"
+  }
+}
+```
+
+#### Update Item Quantity (`PATCH /api/cart/update/:productId`)
+**Request Body**:
+```json
+{
+  "quantity": 4
+}
+```
+**Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "message": "Cart updated successfully",
+  "data": {
+    "id": "6aecc300ab5678cd90123456",
+    "userId": "6aecc15c17648cce570fa051",
+    "items": [
+      {
+        "productId": "6aecb063abbabdeb7f90565f",
+        "name": "Mechanical Gaming Keyboard",
+        "unitPrice": 89.99,
+        "quantity": 4,
+        "itemTotal": 359.96,
+        "stock": 15,
+        "isAvailable": true
+      }
+    ],
+    "itemCount": 4,
+    "uniqueItemCount": 1,
+    "subtotal": 359.96,
+    "total": 359.96
+  }
+}
+```
+
+#### View Cart (`GET /api/cart`)
+**Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "message": "Cart retrieved successfully",
+  "data": {
+    "id": "6aecc300ab5678cd90123456",
+    "userId": "6aecc15c17648cce570fa051",
+    "items": [
+      {
+        "productId": "6aecb063abbabdeb7f90565f",
+        "name": "Mechanical Gaming Keyboard",
+        "unitPrice": 89.99,
+        "quantity": 4,
+        "itemTotal": 359.96,
+        "stock": 15,
+        "isAvailable": true
+      }
+    ],
+    "itemCount": 4,
+    "uniqueItemCount": 1,
+    "subtotal": 359.96,
+    "total": 359.96
+  }
+}
+```
+
+#### Remove Item (`DELETE /api/cart/remove/:productId`)
+**Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "message": "Product removed from cart successfully",
+  "data": {
+    "id": "6aecc300ab5678cd90123456",
+    "userId": "6aecc15c17648cce570fa051",
+    "items": [],
+    "itemCount": 0,
+    "uniqueItemCount": 0,
+    "subtotal": 0,
+    "total": 0
+  }
+}
+```
+
+---
+
 ## 🧪 Automated Testing
 
-Phases 2A through 5B include comprehensive automated integration test suites executed with `mongodb-memory-server` and `supertest` (**108 total tests, 100% pass rate**):
+Phases 2A through 6A include comprehensive automated integration test suites executed with `mongodb-memory-server` and `supertest` (**126 total tests, 100% pass rate**):
 
 ```bash
-# Run all 108 tests across the entire platform:
+# Run all 126 tests across the entire platform:
 npm run test
 
 # Or run individual test suites:
@@ -464,7 +622,28 @@ npm run test:product   # Phase 4A: Product CRUD, Inventory, SKU, Moderation (15 
 npm run test:images    # Phase 4B: S3 Uploads, Previews, Replacements, Deletions (16 tests)
 npm run test:elastic   # Phase 5A: Elasticsearch Setup & Product Indexing (12 tests)
 npm run test:search    # Phase 5B: Advanced Search, Autocomplete & Faceted Filters (15 tests)
+npm run test:cart      # Phase 6A: Shopping Cart Backend & Dynamic Pricing (18 tests)
 ```
+
+### Verified Phase 6A Shopping Cart Test Suite (18 Tests)
+1. **Unauthenticated Cart Access**: Unauthenticated requests to `/api/cart` blocked with HTTP 401 Unauthorized.
+2. **Vendor Access Guard**: Vendor role accounts blocked from managing customer carts with HTTP 403 Forbidden.
+3. **Empty Cart Initial State**: New customers receive an empty cart structure with 0 items and \$0.00 subtotal.
+4. **Add Product to Cart**: Adding an active product returns populated item information and calculated subtotal.
+5. **Quantity Increment on Repeat Add**: Adding the same product increases quantity seamlessly without creating duplicate rows.
+6. **Populated Cart Details**: `GET /api/cart` populates product title, SKU, images, stock, and live unit price.
+7. **Stock Overflow Prevention on Add**: Attempting to add units exceeding available merchant stock rejected with HTTP 400 Bad Request.
+8. **Inactive Product Rejection**: Inactive or draft products cannot be added to a cart (HTTP 400 Bad Request).
+9. **Update Cart Quantity**: Updating quantity recalculates item total and overall cart subtotal.
+10. **Quantity Zero / Negative Validation**: Setting quantity $< 1$ rejected with validation error (HTTP 400/422).
+11. **Update Stock Limit Enforcement**: Updating quantity beyond inventory count rejected with HTTP 400 Bad Request.
+12. **Multiple Products Handling**: Adding multiple distinct products accurately combines subtotal and total.
+13. **Dynamic Current Pricing Proof**: Verifies that updating a product's price in MongoDB immediately recalculates the cart total on retrieval without storing stale price snapshots.
+14. **Customer Cart Isolation**: Customer A cannot see or mutate Customer B's cart; each user has a strictly isolated cart.
+15. **Remove Line Item**: `DELETE /api/cart/remove/:productId` removes the item and updates totals.
+16. **Remove Non-Existent Item**: Removing an item not in cart returns HTTP 404 Not Found.
+17. **Clear Entire Cart**: `DELETE /api/cart/clear` empties all items and resets totals to zero.
+18. **Malformed Product ID Protection**: Invalid MongoDB ObjectIds in parameters or payload safely rejected with HTTP 400/422.
 
 ### Verified Phase 5B Search & Filtering Test Suite (15 Tests)
 1. **Keyword Search**: `q=wireless` returns matching products sorted by relevance score.
@@ -541,7 +720,8 @@ npm run test:search    # Phase 5B: Advanced Search, Autocomplete & Faceted Filte
 | **AWS S3** | Phase 4B | ✅ **Completed** | Private bucket storage, image validation, pre-signed GET URLs, atomic DB failure rollback. |
 | **Elasticsearch** | Phase 5A | ✅ **Completed** | Dedicated search engine (`marketplace_products`), custom analyzers, outbox sync, cursor reindex. |
 | **Search API (ES)** | Phase 5B | ✅ **Completed** | Full-text search endpoint, fuzzy queries, auto-suggestions, faceted price/category filters. |
-| **Redis** | Phase 6 | 📅 Planned | Session blacklist, sliding-window rate limiting, and distributed checkout mutexes using `ioredis`. |
+| **Shopping Cart Backend** | Phase 6A | ✅ **Completed** | Isolated customer carts, live dynamic pricing, stock limit validation, and role protection. |
+| **Redis** | Phase 6B | 📅 Planned | Session blacklist, sliding-window rate limiting, and distributed checkout mutexes using `ioredis`. |
 | **Stripe / Razorpay** | Phase 8 & 10 | 📅 Planned | Multi-party split checkout, escrow holding, and automated seller payouts via official SDKs. |
 
 ---

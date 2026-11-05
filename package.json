@@ -20,6 +20,7 @@
     "test:images": "npm run test:images --workspace=server",
     "test:elastic": "npm run test:elastic --workspace=server",
     "test:search": "npm run test:search --workspace=server",
+    "test:cart": "npm run test:cart --workspace=server",
     "test": "npm run test --workspace=server",
     "build:server": "npm run build --workspace=server",
     "build:client": "npm run build --workspace=client",

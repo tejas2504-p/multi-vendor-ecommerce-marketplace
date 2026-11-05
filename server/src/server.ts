@@ -1,13 +1,15 @@
 import { createApp } from './app';
 import { env } from './config/env.config';
 import { connectDatabase, disconnectDatabase } from './config/db.config';
+import { connectRedis, disconnectRedis } from './config/redis.config';
 import { logger } from './utils/logger';
 
 const startServer = async () => {
   const app = createApp();
 
-  // Connect to MongoDB before accepting traffic
+  // Connect to MongoDB and Redis cache before accepting traffic
   await connectDatabase();
+  await connectRedis();
 
   const server = app.listen(env.PORT, () => {
     logger.info(`🚀 Marketplace Server running in [${env.NODE_ENV}] mode on port ${env.PORT}`);
@@ -22,8 +24,9 @@ const startServer = async () => {
 
     server.close(async () => {
       logger.info('HTTP server closed.');
+      await disconnectRedis();
       await disconnectDatabase();
-      logger.info('Database connections cleanly terminated. Exiting process.');
+      logger.info('Database & cache connections cleanly terminated. Exiting process.');
       process.exit(0);
     });
 

@@ -30,3 +30,18 @@ export const validateQuery = (schema: ZodTypeAny) => {
   };
 };
 
+export const validateParams = (schema: ZodTypeAny) => {
+  return async (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      const parsed = await schema.parseAsync(req.params);
+      req.params = parsed as any;
+      next();
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return next(error);
+      }
+      next(error);
+    }
+  };
+};
+

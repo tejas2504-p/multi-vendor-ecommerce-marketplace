@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { env } from '../config/env.config';
+import { checkRedisHealth } from '../config/redis.config';
 
 export interface HealthStatus {
   status: 'healthy' | 'degraded';
@@ -10,6 +11,7 @@ export interface HealthStatus {
   version: string;
   database: {
     mongodb: 'connected' | 'disconnected' | 'connecting';
+    redis: 'connected' | 'disconnected';
   };
   memoryUsageMB: {
     rss: string;
@@ -18,7 +20,7 @@ export interface HealthStatus {
 }
 
 export class HealthService {
-  static getSystemHealth(): HealthStatus {
+  static async getSystemHealth(): Promise<HealthStatus> {
     const mongoReadyState = mongoose.connection.readyState;
     let mongoStatus: 'connected' | 'disconnected' | 'connecting' = 'disconnected';
 
@@ -28,10 +30,11 @@ export class HealthService {
       mongoStatus = 'connecting';
     }
 
+    const redisHealth = await checkRedisHealth();
     const memoryUsage = process.memoryUsage();
 
     return {
-      status: 'healthy',
+      status: mongoStatus === 'connected' ? 'healthy' : 'degraded',
       message: 'Multi-Vendor Marketplace API is running smoothly',
       uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
@@ -39,6 +42,7 @@ export class HealthService {
       version: '1.0.0',
       database: {
         mongodb: mongoStatus,
+        redis: redisHealth.status,
       },
       memoryUsageMB: {
         rss: (memoryUsage.rss / 1024 / 1024).toFixed(2),

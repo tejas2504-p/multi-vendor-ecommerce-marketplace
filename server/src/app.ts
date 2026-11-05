@@ -12,6 +12,7 @@ import { vendorProfileRoutes } from './routes/vendorProfile.routes';
 import { adminRoutes } from './routes/admin.routes';
 import { categoryRoutes } from './routes/category.routes';
 import { productRoutes } from './routes/product.routes';
+import { cartRoutes } from './routes/cart.routes';
 import { v1Router } from './routes/v1';
 import { notFoundMiddleware } from './middlewares/notFound.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
@@ -81,6 +82,10 @@ export const createApp = (): Application => {
   app.use('/categories', categoryRoutes);
   app.use('/api/products', productRoutes);
   app.use('/products', productRoutes);
+
+  // Cart endpoints
+  app.use('/api/cart', cartRoutes);
+  app.use('/cart', cartRoutes);
 
   // API v1 Router
   app.use('/api/v1', v1Router);

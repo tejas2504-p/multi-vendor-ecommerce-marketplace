@@ -27,6 +27,17 @@ export const setElasticsearchClient = (client: Client | null): void => {
   elasticClientInstance = client;
 };
 
+export const elasticClient = new Proxy({} as Client, {
+  get: (_target, prop: string | symbol) => {
+    const client = getElasticsearchClient();
+    const value = (client as any)[prop];
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
+
 export const ELASTICSEARCH_INDEX = env.ELASTICSEARCH_INDEX || 'marketplace_products';
 
 export interface ElasticsearchHealthResult {

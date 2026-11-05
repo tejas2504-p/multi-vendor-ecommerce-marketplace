@@ -17,6 +17,7 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { ProductSearchExperience } from '../components/search/ProductSearchExperience';
 import { AuthRoleTestingPanel } from '../components/auth/AuthRoleTestingPanel';
+import { VendorPortalTestingPanel } from '../components/vendor/VendorPortalTestingPanel';
 
 export const LandingPage: React.FC = () => {
   const { activeRole, setActiveRole } = useApp();
@@ -173,6 +174,9 @@ export const LandingPage: React.FC = () => {
 
       {/* Phase 2: Authentication & Role-Based Access Control Console */}
       <AuthRoleTestingPanel />
+
+      {/* Phase 3: Vendor Onboarding & Store Governance Console */}
+      <VendorPortalTestingPanel />
 
       {/* Phase 5B: Advanced Elasticsearch Catalog Search & Discovery */}
       <ProductSearchExperience />

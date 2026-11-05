@@ -485,8 +485,13 @@ async function runProductTestSuite() {
     console.log('🎉 ALL 15 PRODUCT & INVENTORY TESTS PASSED!');
     console.log('======================================================\n');
   } finally {
-    await mongoose.disconnect();
-    await mongoServer.stop();
+    try {
+      await mongoose.disconnect();
+    } catch {}
+    try {
+      await mongoServer.stop({ doCleanup: true, force: true });
+    } catch {}
+    process.exit(0);
   }
 }
 

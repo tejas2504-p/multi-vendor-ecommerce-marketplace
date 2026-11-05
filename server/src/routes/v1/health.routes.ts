@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { redisClient } from '../../config/redis.config';
-import { elasticClient } from '../../config/elastic.config';
+import { getElasticsearchClient } from '../../config/elastic.config';
 import { ApiResponse } from '../../utils/apiResponse';
 
 const router = Router();
@@ -13,7 +13,7 @@ router.get('/', async (_req: Request, res: Response) => {
   let elasticsearchStatus = 'disconnected';
   try {
     const esPing = await Promise.race([
-      elasticClient.ping(),
+      getElasticsearchClient().ping(),
       new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error('timeout')), 500)),
     ]);
     if (esPing) {
