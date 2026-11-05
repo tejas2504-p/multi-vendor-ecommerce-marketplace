@@ -16,6 +16,7 @@ import { useApp } from '../context/AppContext';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { ProductSearchExperience } from '../components/search/ProductSearchExperience';
+import { AuthRoleTestingPanel } from '../components/auth/AuthRoleTestingPanel';
 
 export const LandingPage: React.FC = () => {
   const { activeRole, setActiveRole } = useApp();
@@ -169,6 +170,9 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </Card>
+
+      {/* Phase 2: Authentication & Role-Based Access Control Console */}
+      <AuthRoleTestingPanel />
 
       {/* Phase 5B: Advanced Elasticsearch Catalog Search & Discovery */}
       <ProductSearchExperience />

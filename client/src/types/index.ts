@@ -37,6 +37,26 @@ export interface HealthData {
 
 export type MarketplaceRole = 'customer' | 'vendor' | 'admin';
 
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: MarketplaceRole;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RegisterCredentials {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
 export interface IndexedProduct {
   productId: string;
   name: string;

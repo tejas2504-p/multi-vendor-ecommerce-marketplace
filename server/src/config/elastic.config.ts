@@ -27,21 +27,6 @@ export const setElasticsearchClient = (client: Client | null): void => {
   elasticClientInstance = client;
 };
 
-/**
- * Proxy object for elasticClient that forwards dynamically to the active client.
- * Compatible with legacy references and mock injection.
- */
-export const elasticClient: Client = new Proxy({} as Client, {
-  get(_target, prop) {
-    const client = getElasticsearchClient();
-    const val = (client as any)[prop];
-    if (typeof val === 'function') {
-      return val.bind(client);
-    }
-    return val;
-  },
-});
-
 export const ELASTICSEARCH_INDEX = env.ELASTICSEARCH_INDEX || 'marketplace_products';
 
 export interface ElasticsearchHealthResult {

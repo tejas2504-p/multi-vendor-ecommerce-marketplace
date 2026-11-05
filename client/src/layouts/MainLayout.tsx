@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
+import { AuthModal } from '../components/auth/AuthModal';
 import { useApp } from '../context/AppContext';
 
 export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -13,6 +14,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
         {children}
       </main>
       <Footer />
+      <AuthModal />
     </div>
   );
 };
