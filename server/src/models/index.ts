@@ -13,6 +13,14 @@ export * from './order.model';
 export * from './vendorOrder.model';
 export * from './payment.model';
 export * from './webhookEvent.model';
+export * from './platformSetting.model';
+export * from './vendorEarnings.model';
+export * from './vendorLedger.model';
+export * from './vendorPayout.model';
+export * from './review.model';
+export * from './reviewVote.model';
+export * from './coupon.model';
+export * from './couponUsage.model';
 
 export const registeredModels = [
   'User',

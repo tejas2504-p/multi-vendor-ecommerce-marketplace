@@ -17,6 +17,8 @@ import { addressRoutes } from './routes/address.routes';
 import { checkoutRoutes } from './routes/checkout.routes';
 import { orderRoutes } from './routes/order.routes';
 import { paymentRoutes } from './routes/payment.routes';
+import { reviewRoutes } from './routes/review.routes';
+import { couponRoutes } from './routes/coupon.routes';
 import { v1Router } from './routes/v1';
 import { notFoundMiddleware } from './middlewares/notFound.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
@@ -109,6 +111,14 @@ export const createApp = (): Application => {
   app.use('/orders', orderRoutes);
   app.use('/api/payments', paymentRoutes);
   app.use('/payments', paymentRoutes);
+
+  // Review & Rating endpoints (Phase 9A)
+  app.use('/api/reviews', reviewRoutes);
+  app.use('/reviews', reviewRoutes);
+
+  // Coupon & Discount endpoints (Phase 9B)
+  app.use('/api/coupons', couponRoutes);
+  app.use('/coupons', couponRoutes);
 
   // API v1 Router
   app.use('/api/v1', v1Router);

@@ -1047,6 +1047,66 @@ Run using `npm run test:payment`:
 
 ---
 
+## 💰 Phase 8B: Platform Commission & Vendor Payout Management
+
+Phase 8B introduces automated marketplace commission calculation, merchant balance tracking, double-entry financial audit ledgers, and end-to-end administrative payout treasury controls.
+
+### 📐 Financial Architecture & Principles
+1. **Commissionable Base**: Commission is strictly assessed on line-item subtotals (`vendorOrder.vendorSubtotal`). Non-commissionable amounts such as shipping shares (`shippingShare`) and sales taxes are excluded from platform fee shares.
+2. **Decimal-Safe Integer Minor Units (Paise) Math**: All financial computations convert amounts to integer minor units (paise) to eliminate floating-point drift:
+   $$\text{grossPaise} = \text{round}(\text{grossAmount} \times 100)$$
+   $$\text{platformFeePaise} = \text{round}\left(\frac{\text{grossPaise} \times \text{rate}}{100}\right)$$
+   $$\text{vendorEarningsPaise} = \text{grossPaise} - \text{platformFeePaise}$$
+3. **Exact Reconciliation Invariant**: The gross order amount strictly equals platform commission fee plus net vendor earnings:
+   $$\text{grossAmount} \equiv \text{platformFee} + \text{vendorEarnings}$$
+4. **Commission Rate Precedence**:
+   $$\text{VendorProfile.commissionRate} \longrightarrow \text{PlatformSetting (default\_commission\_rate)} \longrightarrow 10.0\%$$
+5. **Atomic Balance Reservation**: When a vendor requests a payout withdrawal, funds are atomically reserved from `availableBalance` to `pendingBalance`:
+   $$\text{availableBalance} \geq \text{requestedAmount}$$
+   If approved and settled (`paid`), funds move from `pendingBalance` to `paidOutAmount`. If rejected or failed, funds are atomically restored from `pendingBalance` back to `availableBalance`.
+6. **Immutable Double-Entry Ledger**: Every balance transition writes an immutable `VendorLedger` record with direction (`credit` | `debit`), amount, balance after, reference, and audit metadata.
+
+---
+
+### 📡 Phase 8B API Endpoints
+
+#### Vendor Console Endpoints
+- `GET /api/vendor/earnings` — Real-time earnings summary, available/pending balances, and effective commission rate.
+- `GET /api/vendor/transactions` — Paginated immutable financial ledger entries (`order_earning`, `payout_requested`, `payout_rejected`, `payout_processed`, `payout_failed`).
+- `GET /api/vendor/payouts` — Paginated history of withdrawal requests with provider references and status badges.
+- `POST /api/vendor/payouts/request` — Submit withdrawal request with balance reservation (enforces available balance and minimum payout threshold).
+
+#### Super-Admin Treasury Endpoints
+- `GET /api/admin/payouts` — Filterable payout queue with overall platform gross sales, total commission retained, and merchant balances.
+- `GET /api/admin/payouts/:payoutId` — Payout detail with merchant KYC profile, current earnings, and recent ledger history.
+- `PATCH /api/admin/payouts/:payoutId/approve` — Approve pending payout request (`requested` $\rightarrow$ `approved`).
+- `PATCH /api/admin/payouts/:payoutId/reject` — Reject payout request with required reason; atomically restores reserved balance to merchant and logs reversal credit.
+- `PATCH /api/admin/payouts/:payoutId/status` — Advance payout status (`processing`, `paid` with settlement provider reference, `failed` with balance restoration).
+- `GET /api/admin/commission` — Platform default rate, minimum payout threshold, and active vendor rate overrides.
+- `PUT /api/admin/commission/platform` — Update global marketplace default commission percentage.
+- `PUT /api/admin/commission/vendors/:vendorId` — Set or update custom commission rate override for a specific merchant.
+
+---
+
+### Verified Phase 8B Commission & Payout Test Suite (14 Tests)
+Run using `npm run test:commission`:
+1. **Default Platform Commission Rate**: 10.0% default rate resolved when no override exists (`200 OK`).
+2. **Vendor-Specific Commission Override**: Custom 15.0% rate in `VendorProfile` correctly supersedes global default rate.
+3. **Non-Commissionable Exclusions**: Platform commission calculated strictly on product subtotals, excluding shipping amounts.
+4. **Decimal-Safe Paise Math**: Fractions (e.g. ₹99.99 with 10% rate) calculate in integer minor units without cent/paise drift.
+5. **Exact Reconciliation Invariant**: Verified `grossAmount == platformFee + vendorEarnings` across all odd and fractional orders.
+6. **Automatic Verification Trigger**: Verified captured payment (`PaymentService.verifyPayment`) automatically snapshots commission on `VendorOrder` and credits `VendorEarnings`.
+7. **Idempotency Safeguard**: Re-invoking commission calculation on an already-processed vendor order skips without duplicate balance credits.
+8. **Atomic Ledger Credit**: Crediting earnings creates an immutable `order_earning` ledger transaction with balance after matching.
+9. **Payout Request & Balance Reservation**: Vendor requests payout with sufficient balance $\rightarrow$ atomically reserves funds (`availableBalance` $\rightarrow$ `pendingBalance`) and creates debit ledger entry (`201 Created`).
+10. **Insufficient Balance Guard**: Payout requests exceeding available balance rejected with `400 Bad Request`.
+11. **Minimum Withdrawal Threshold**: Payout requests below configurable minimum threshold (₹50) rejected with `400 Bad Request`.
+12. **Admin Payout Approval**: Admin approves payout $\rightarrow$ transitions status to `approved` (`200 OK`).
+13. **Admin Payout Rejection & Balance Restoration**: Admin rejects payout with required reason $\rightarrow$ atomically restores reserved funds (`pendingBalance` $\rightarrow$ `availableBalance`) and records credit reversal ledger entry (`200 OK`).
+14. **Settlement & Disbursal Audit**: Admin marks payout as `paid` with provider transaction reference $\rightarrow$ transitions `pendingBalance` to `paidOutAmount`, logs settlement transaction, and verifies zero financial drift (`200 OK`).
+
+---
+
 ### Verified Phase 7B Multi-Vendor Order Test Suite (14 Tests)
 Run using `npm run test:multivendor`:
 1. Checkout with 1 vendor $\rightarrow$ Creates 1 parent order and 1 child vendor order (`201 Created`).
@@ -1063,6 +1123,140 @@ Run using `npm run test:multivendor`:
 12. Vendor order cancellation restores product inventory count exactly once in MongoDB and Elasticsearch.
 13. Checkout idempotency prevents duplicate parent and vendor order creation.
 14. Order snapshot immutability: subsequent product price and name edits do not modify completed order records.
+
+---
+
+## ⭐ Phase 9A: Product Reviews and Ratings
+
+Phase 9A introduces an Amazon-style product rating and review subsystem featuring verified purchase verification, automated aggregate score calculations, helpful review voting, and administrative content moderation.
+
+### 📐 Review Architecture & Security Invariants
+1. **Verified Purchase Validation**: Customers can only review a product if they purchased it in an order that has been fully paid (`paymentStatus: 'paid'`) and the specific vendor order containing the product has reached the `delivered` status. Unverified customers or customers with pending/shipped orders are blocked server-side (`403 Forbidden`).
+2. **Review Uniqueness Policy**: A customer may write at most one review per product (`{ userId: 1, productId: 1 }` compound unique index). Subsequent submissions are rejected (`409 Conflict`), and users must update (`PATCH`) their existing review instead.
+3. **Server-Side Trust Boundary**: The `isVerifiedPurchase` flag and order linkage (`orderId`, `vendorOrderId`) are resolved and validated strictly on the server against persisted orders; client-provided overrides are ignored.
+4. **Rating Scale & Strict Validation**: Ratings are integers strictly between 1 and 5. Out-of-bounds ratings, decimals, and empty titles or comments are rejected with validation errors (`422 Unprocessable Entity`).
+5. **Real-time Rating Synchronization**: Every review creation, update, deletion, or moderation change triggers recalculation of the product's `averageRating` (rounded to one decimal place) and `reviewCount` using MongoDB aggregation, updating the `Product` document. Only `approved` reviews count toward public ratings.
+6. **Helpful Review Voting**: Community voting uses a dedicated `ReviewVote` model with compound index `{ reviewId: 1, userId: 1 }`. Customers can toggle helpful votes on/off. Review authors are strictly prevented from upvoting their own reviews (`400 Bad Request`).
+7. **Multi-Role Moderation Pipeline**: Reviews default to `approved` status, but platform administrators can query all reviews across the platform, filter by moderation status (`approved`, `hidden`, `rejected`), update moderation status with mandatory rejection reasons, or permanently delete abusive content.
+
+---
+
+### 📡 Phase 9A API Endpoints
+
+#### Customer & Public Review Endpoints
+- `GET /api/products/:productId/reviews` — Retrieve approved reviews with pagination, star-rating filtering, author data, and aggregate summary (`averageRating`, `totalReviews`, and 1–5 star distribution).
+- `GET /api/products/:productId/reviews/eligibility` — Authenticated endpoint checking whether the caller can review the product (`isEligible`, `hasReviewed`, `existingReviewId`).
+- `POST /api/products/:productId/reviews` — Submit verified review (`rating`, `title`, `comment`). Validates delivered purchase ownership.
+- `PATCH /api/reviews/:reviewId` — Update existing review title, rating, or comment (restricted strictly to author).
+- `DELETE /api/reviews/:reviewId` — Delete review (permitted for author or platform administrator).
+- `POST /api/reviews/:reviewId/helpful` — Toggle helpful vote on a review (enforces single vote per user and blocks author self-votes).
+
+#### Platform Admin Moderation Endpoints
+- `GET /api/admin/reviews` — Paginated list of all marketplace reviews with status filtering (`all`, `approved`, `hidden`, `rejected`), populated customer, product, and moderator details.
+- `PATCH /api/admin/reviews/:reviewId/status` — Moderate review status (`approved`, `hidden`, `rejected` with rejection reason and audit tracking).
+- `DELETE /api/admin/reviews/:reviewId` — Administrative hard deletion of abusive review content.
+
+---
+
+### 🖥️ Frontend Review UI & Experiences
+- **`ProductReviewsSection.tsx`**: Amazon-style rating breakdown, interactive star distribution meters, verified purchase badges, review author cards, write/edit review dialog with interactive star rating picker, and helpful vote button.
+- **`ProductDetailModal.tsx`**: Full product detail modal overlay with image carousel, specifications, add-to-cart controls, and the embedded `ProductReviewsSection`.
+- **`AdminReviewsModerator.tsx`**: Dedicated admin portal tab for monitoring marketplace feedback, filtering by moderation state, reviewing flagged comments, approving, hiding, or rejecting with custom feedback reasons.
+
+---
+
+### Verified Phase 9A Product Reviews & Ratings Test Suite (13 Tests)
+Run using `npm run test:reviews`:
+1. **Eligible Customer Review**: Customer with paid & delivered vendor order creates verified review (`201 Created`).
+2. **Undelivered Order Rejection**: Customer with processing/shipped order blocked with `403 Forbidden`.
+3. **Unpurchased Product Rejection**: Customer attempting to review product they never ordered blocked with `403 Forbidden`.
+4. **Duplicate Review Prevention**: Second review submission for identical product rejected with `409 Conflict`.
+5. **Invalid Rating Rejection**: Out-of-bounds (0, 6) or fractional (4.5) ratings rejected with validation error (`422 Unprocessable Entity`).
+6. **Review Editing Ownership**: Author successfully updates title/comment; cross-customer edit rejected (`403 Forbidden`).
+7. **Review Deletion Ownership**: Non-owner blocked (`403 Forbidden`); author and super-admin can delete review (`200 OK`).
+8. **Review Moderation Visibility**: Admin hides review $\rightarrow$ review excluded from public listing.
+9. **Average Rating Calculation**: Product aggregate average rating accurately computed across approved reviews.
+10. **Rating Distribution Breakdown**: Star counts (1 to 5) accurately match exact review distribution.
+11. **Helpful Voting Safeguards**: Author cannot self-vote (`400 Bad Request`); customer voting toggles on/off idempotently.
+12. **Hidden Review Rating Exclusion**: Hidden or rejected reviews immediately excluded from product rating calculation.
+13. **Pagination & Star Filtering**: Querying reviews by star rating (e.g. `rating=5`) and pagination limit/page behaves correctly.
+
+---
+
+## 🎟️ Phase 9B: Coupon and Discount Management
+
+Phase 9B implements a coupon and promotion system supporting percentage and fixed discounts, minimum order constraints, maximum discount caps, per-customer and global usage limits, product/category/vendor targeting, atomic checkout reservations, and multi-vendor discount reconciliation.
+
+### 📐 Coupon Architecture & Financial Invariants
+1. **Server-Authoritative Calculations**: All discount amounts, cart subtotals, and net payables are computed strictly on the backend using trusted MongoDB data. Client-submitted prices, discounts, or payables are ignored.
+2. **Discount Types & Caps**:
+   - **Percentage Discount**: Discount = $\min\left(\frac{\text{eligibleSubtotal} \times \text{discountValue}}{100}, \text{maximumDiscountAmount}\right)$.
+   - **Fixed Amount Discount**: Discount = $\min(\text{discountValue}, \text{eligibleSubtotal})$.
+3. **Targeting & Restrictions**:
+   - Storewide (no restrictions): All cart items qualify.
+   - Product-specific: Only items where `item.productId` is in `coupon.applicableProducts` qualify.
+   - Category-specific: Only items where `product.categoryId` is in `coupon.applicableCategories` qualify.
+   - Vendor-specific: Only items where `product.vendorId` is in `coupon.applicableVendors` qualify.
+4. **Multi-Vendor Discount Allocation**:
+   Discounts are distributed across child vendor orders proportionally to each merchant's eligible subtotal share:
+   $$\text{discountShare}_v = \text{round}\left(\frac{\text{eligibleSubtotal}_v}{\text{totalEligibleSubtotal}} \times \text{discountAmount}\right)$$
+   The final vendor absorbs penny rounding differences so that $\sum_v \text{discountShare}_v \equiv \text{discountAmount}$.
+   Parent and vendor order totals reconcile:
+   $$\text{parentTotal} \equiv \sum_v (\text{vendorSubtotal}_v - \text{discountShare}_v + \text{shippingShare}_v)$$
+5. **Atomic Usage Accounting & Concurrency Guard**:
+   Coupon redemptions are atomically incremented during checkout using conditional query:
+   `{ _id: couponId, isActive: true, usageCount: { $lt: totalUsageLimit } }`
+   ensuring that concurrent checkout requests cannot exceed global or per-customer limits.
+   Failed or rolled back checkouts immediately decrement the reservation.
+6. **Payment Gateway Reconciliation**:
+   Razorpay order amount is initialized with `Math.round(order.totalAmount * 100)` in paise, guaranteeing the customer pays the exact discounted total.
+7. **Audit Trail**: Every redemption writes an immutable `CouponUsage` record linking `couponId`, `customerId`, `orderId`, and `discountAmount`.
+
+---
+
+### 📡 Phase 9B API Endpoints
+
+#### Admin Coupon Management Endpoints
+- `POST /api/admin/coupons` — Create new promotional coupon (Admin only).
+- `GET /api/admin/coupons` — List marketplace coupons with search, status filtering, and pagination.
+- `GET /api/admin/coupons/:id` — Retrieve coupon detail with total redemption count.
+- `PATCH /api/admin/coupons/:id` — Update coupon configuration, date ranges, or active state.
+- `DELETE /api/admin/coupons/:id` — Delete unused coupon or deactivate if historical redemptions exist.
+
+#### Customer Coupon Endpoints
+- `POST /api/coupons/validate` — Validate a coupon code against the customer's active cart and return real-time discount preview and payable total without consuming usage.
+- `POST /api/checkout` — Checkout accepting optional `couponCode`. Re-evaluates coupon against live cart, consumes usage atomically, records snapshot on parent and vendor orders.
+
+---
+
+### 🖥️ Frontend UI Deliverables
+- **`CheckoutModal.tsx`**: Interactive coupon input with real-time validation, discount breakdown pill, removable coupon badge, and automatic recalculation of final payable total.
+- **`AdminCouponsManager.tsx`**: Administrative console with create/edit coupon dialogs, status filters, validity dates, global/user usage caps, and activation/deactivation controls. Mounted in Admin Governance portal (`LandingPage.tsx`).
+
+---
+
+### Verified Phase 9B Coupon & Discount Management Test Suite (16 Tests)
+Run using `npm run test:coupons`:
+1. **Create percentage coupon**: Admin creates percentage coupon with max cap and min order (`201 Created`).
+2. **Create fixed discount coupon**: Admin creates fixed amount coupon (`201 Created`).
+3. **Apply valid coupon**: Customer validates coupon against cart; discount and payable amounts calculated correctly (`200 OK`).
+4. **Apply expired coupon**: Expired coupon rejected with `400 Bad Request`.
+5. **Apply inactive coupon**: Inactive coupon rejected with `400 Bad Request`.
+6. **Apply coupon before start date**: Scheduled future coupon rejected with `400 Bad Request`.
+7. **Test minimum order amount**: Cart below required minimum subtotal rejected with `400 Bad Request`.
+8. **Test maximum discount cap**: Percentage discount accurately capped at `maximumDiscountAmount`.
+9. **Test global usage limit**: Coupon that has reached `totalUsageLimit` rejected with `400 Bad Request`.
+10. **Test per-user usage limit**: Customer who redeemed `perUserUsageLimit` rejected; other customers can still redeem.
+11. **Test vendor-specific coupon**: Discount calculated strictly on items belonging to the target vendor.
+12. **Test invalid coupon code**: Non-existent coupon code rejected with `404 Not Found`.
+13. **Test simultaneous coupon redemption**: Concurrent checkouts on last remaining coupon slot result in exactly 1 success and 1 rejection without race condition.
+14. **Test duplicate checkout submission**: Idempotency key prevents duplicate coupon incrementation and duplicate order creation.
+15. **Verify Razorpay amount matches final payable amount**: Razorpay order amount strictly matches discounted total in paise.
+16. **Verify order and vendor order totals reconcile**: Sum of vendor subtotals, vendor discounts, shipping shares, and net totals match parent order totals to the penny.
+
+---
+
+---
 
 ---
 

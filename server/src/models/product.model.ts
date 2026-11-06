@@ -24,6 +24,8 @@ export interface IProduct {
   sku: string;
   status: ProductStatus;
   isDeleted: boolean;
+  averageRating: number;
+  reviewCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -114,6 +116,18 @@ const productSchema = new Schema<IProduct, ProductModel>(
       type: Boolean,
       default: false,
       index: true,
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: [0, 'Rating cannot be negative'],
+      max: [5, 'Rating cannot exceed 5'],
+      index: true,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Review count cannot be negative'],
     },
   },
   {

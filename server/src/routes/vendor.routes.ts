@@ -7,9 +7,11 @@ import { validateBody, validateParams } from '../middlewares/validate.middleware
 import { updateVendorProfileSchema } from '../validators/vendor.validator';
 import { updateInventorySchema } from '../validators/product.validator';
 import { vendorOrderParamSchema, updateVendorOrderStatusSchema } from '../validators/order.validator';
+import { requestPayoutSchema } from '../validators/commission.validator';
 import { VendorController } from '../controllers/vendor.controller';
 import { ProductController } from '../controllers/product.controller';
 import { OrderController } from '../controllers/order.controller';
+import { CommissionController } from '../controllers/commission.controller';
 import { ApiResponse } from '../utils/apiResponse';
 
 const router = Router();
@@ -122,6 +124,55 @@ router.get(
       'Resource accessed successfully by authorized owner'
     );
   }
+);
+
+/**
+ * Phase 8B: Platform Commission & Vendor Payout Endpoints
+ */
+
+/**
+ * GET /api/vendor/earnings
+ * Protected: Retrieve vendor earnings summary and real-time balances
+ */
+router.get(
+  '/earnings',
+  authenticate,
+  requireApprovedVendor,
+  CommissionController.getEarnings
+);
+
+/**
+ * GET /api/vendor/transactions
+ * Protected: Retrieve paginated transaction ledger
+ */
+router.get(
+  '/transactions',
+  authenticate,
+  requireApprovedVendor,
+  CommissionController.getTransactions
+);
+
+/**
+ * GET /api/vendor/payouts
+ * Protected: Retrieve paginated payout withdrawal requests
+ */
+router.get(
+  '/payouts',
+  authenticate,
+  requireApprovedVendor,
+  CommissionController.getPayouts
+);
+
+/**
+ * POST /api/vendor/payouts/request
+ * Protected: Submit a new payout request with balance reservation
+ */
+router.post(
+  '/payouts/request',
+  authenticate,
+  requireApprovedVendor,
+  validateBody(requestPayoutSchema),
+  CommissionController.requestPayout
 );
 
 export const vendorRoutes = router;

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, optionalAuthenticate } from '../middlewares/auth.middleware';
 import { requireApprovedVendor } from '../middlewares/vendor.middleware';
-import { validateBody, validateQuery } from '../middlewares/validate.middleware';
+import { validateBody, validateQuery, validateParams } from '../middlewares/validate.middleware';
 import {
   createProductSchema,
   updateProductSchema,
@@ -11,8 +11,14 @@ import {
   searchProductsQuerySchema,
   searchSuggestionsQuerySchema,
 } from '../validators/productSearch.validator';
+import {
+  createReviewSchema,
+  reviewQuerySchema,
+  productReviewParamSchema,
+} from '../validators/review.validator';
 import { ProductController } from '../controllers/product.controller';
 import { ProductSearchController } from '../controllers/productSearch.controller';
+import { ReviewController } from '../controllers/review.controller';
 import { productImageRoutes } from './productImage.routes';
 
 const router = Router();
@@ -87,6 +93,47 @@ router.patch(
   authenticate,
   validateBody(updateInventorySchema),
   ProductController.updateInventory
+);
+
+/**
+ * ==========================================
+ * Phase 9A: Product Reviews & Ratings Routes
+ * ==========================================
+ */
+
+/**
+ * GET /api/products/:productId/reviews
+ * Public: List approved reviews with rating distribution summary & pagination
+ */
+router.get(
+  '/:productId/reviews',
+  optionalAuthenticate,
+  validateParams(productReviewParamSchema),
+  validateQuery(reviewQuerySchema),
+  ReviewController.getProductReviews
+);
+
+/**
+ * GET /api/products/:productId/reviews/eligibility
+ * Protected: Check if authenticated customer is eligible to review this product
+ */
+router.get(
+  '/:productId/reviews/eligibility',
+  authenticate,
+  validateParams(productReviewParamSchema),
+  ReviewController.checkEligibility
+);
+
+/**
+ * POST /api/products/:productId/reviews
+ * Protected: Customer submits verified review for delivered product
+ */
+router.post(
+  '/:productId/reviews',
+  authenticate,
+  validateParams(productReviewParamSchema),
+  validateBody(createReviewSchema),
+  ReviewController.createReview
 );
 
 /**

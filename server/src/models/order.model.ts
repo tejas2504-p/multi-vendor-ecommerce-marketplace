@@ -33,6 +33,14 @@ export interface IOrderItemSnapshot {
   itemSubtotal: number;
 }
 
+export interface ICouponSnapshot {
+  couponId: Types.ObjectId;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  discountAmount: number;
+}
+
 export interface IOrder {
   _id?: Types.ObjectId;
   orderNumber: string;
@@ -45,6 +53,8 @@ export interface IOrder {
   shippingAmount: number;
   discountAmount: number;
   totalAmount: number;
+  couponCode?: string;
+  couponSnapshot?: ICouponSnapshot;
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
   idempotencyKey?: string;
@@ -171,6 +181,18 @@ const orderSchema = new Schema<IOrder, OrderModel>(
       type: Number,
       required: [true, 'Total amount is required'],
       min: [0, 'Total amount cannot be negative'],
+    },
+    couponCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    couponSnapshot: {
+      couponId: { type: Schema.Types.ObjectId, ref: 'Coupon' },
+      code: { type: String, trim: true, uppercase: true },
+      discountType: { type: String, enum: ['percentage', 'fixed'] },
+      discountValue: { type: Number },
+      discountAmount: { type: Number, default: 0 },
     },
     paymentStatus: {
       type: String,

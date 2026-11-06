@@ -1,13 +1,33 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middlewares/auth.middleware';
 import { authorize } from '../middlewares/rbac.middleware';
-import { validateBody, validateParams } from '../middlewares/validate.middleware';
+import { validateBody, validateParams, validateQuery } from '../middlewares/validate.middleware';
 import { rejectVendorSchema } from '../validators/vendor.validator';
 import { updateProductStatusSchema } from '../validators/product.validator';
 import { orderParamSchema, adminUpdateOrderStatusSchema } from '../validators/order.validator';
+import {
+  updatePlatformCommissionSchema,
+  updateVendorCommissionSchema,
+  updatePayoutStatusSchema,
+  rejectPayoutSchema,
+} from '../validators/commission.validator';
+import {
+  adminReviewQuerySchema,
+  updateReviewModerationSchema,
+  reviewParamSchema,
+} from '../validators/review.validator';
+import {
+  createCouponSchema,
+  updateCouponSchema,
+  couponQuerySchema,
+  couponParamSchema,
+} from '../validators/coupon.validator';
 import { AdminVendorController } from '../controllers/adminVendor.controller';
 import { ProductController } from '../controllers/product.controller';
 import { OrderController } from '../controllers/order.controller';
+import { CommissionController } from '../controllers/commission.controller';
+import { ReviewController } from '../controllers/review.controller';
+import { CouponController } from '../controllers/coupon.controller';
 import { ApiResponse } from '../utils/apiResponse';
 
 const router = Router();
@@ -152,6 +172,188 @@ router.patch(
   validateParams(orderParamSchema),
   validateBody(adminUpdateOrderStatusSchema),
   OrderController.adminUpdateOrderStatus
+);
+
+/**
+ * Phase 8B: Platform Commission & Payout Management Endpoints
+ */
+
+/**
+ * GET /api/admin/payouts
+ * Protected: List all vendor payout requests with status filtering
+ */
+router.get('/payouts', authenticate, authorize('admin'), CommissionController.getAdminPayouts);
+
+/**
+ * GET /api/admin/payouts/:payoutId
+ * Protected: Payout detail with audit & vendor history
+ */
+router.get('/payouts/:payoutId', authenticate, authorize('admin'), CommissionController.getAdminPayoutById);
+
+/**
+ * PATCH /api/admin/payouts/:payoutId/approve
+ * Protected: Approve payout request
+ */
+router.patch('/payouts/:payoutId/approve', authenticate, authorize('admin'), CommissionController.approvePayout);
+
+/**
+ * PATCH /api/admin/payouts/:payoutId/reject
+ * Protected: Reject payout request with reason and balance restoration
+ */
+router.patch(
+  '/payouts/:payoutId/reject',
+  authenticate,
+  authorize('admin'),
+  validateBody(rejectPayoutSchema),
+  CommissionController.rejectPayout
+);
+
+/**
+ * PATCH /api/admin/payouts/:payoutId/status
+ * Protected: Update processing status (processing, paid, failed)
+ */
+router.patch(
+  '/payouts/:payoutId/status',
+  authenticate,
+  authorize('admin'),
+  validateBody(updatePayoutStatusSchema),
+  CommissionController.updatePayoutStatus
+);
+
+/**
+ * GET /api/admin/commission
+ * Protected: Commission overview and vendor overrides
+ */
+router.get('/commission', authenticate, authorize('admin'), CommissionController.getCommissionSettings);
+
+/**
+ * PUT /api/admin/commission/platform
+ * Protected: Update global platform commission rate
+ */
+router.put(
+  '/commission/platform',
+  authenticate,
+  authorize('admin'),
+  validateBody(updatePlatformCommissionSchema),
+  CommissionController.updatePlatformCommission
+);
+
+/**
+ * PUT /api/admin/commission/vendors/:vendorId
+ * Protected: Update custom commission rate override for a vendor
+ */
+router.put(
+  '/commission/vendors/:vendorId',
+  authenticate,
+  authorize('admin'),
+  validateBody(updateVendorCommissionSchema),
+  CommissionController.updateVendorCommission
+);
+
+/**
+ * Phase 9A: Product Review Moderation Endpoints
+ */
+
+/**
+ * GET /api/admin/reviews
+ * Protected: List all customer reviews with moderation status filter
+ */
+router.get(
+  '/reviews',
+  authenticate,
+  authorize('admin'),
+  validateQuery(adminReviewQuerySchema),
+  ReviewController.adminListReviews
+);
+
+/**
+ * PATCH /api/admin/reviews/:reviewId/status
+ * Protected: Admin updates moderation status (approved, hidden, rejected, pending)
+ */
+router.patch(
+  '/reviews/:reviewId/status',
+  authenticate,
+  authorize('admin'),
+  validateParams(reviewParamSchema),
+  validateBody(updateReviewModerationSchema),
+  ReviewController.adminUpdateModerationStatus
+);
+
+/**
+ * DELETE /api/admin/reviews/:reviewId
+ * Protected: Admin permanently removes review
+ */
+router.delete(
+  '/reviews/:reviewId',
+  authenticate,
+  authorize('admin'),
+  validateParams(reviewParamSchema),
+  ReviewController.deleteReview
+);
+
+/**
+ * Phase 9B: Admin Marketplace Coupon & Discount Engine Endpoints
+ */
+
+/**
+ * POST /api/admin/coupons
+ * Protected: Create a new marketplace coupon
+ */
+router.post(
+  '/coupons',
+  authenticate,
+  authorize('admin'),
+  validateBody(createCouponSchema),
+  CouponController.createCoupon
+);
+
+/**
+ * GET /api/admin/coupons
+ * Protected: List all coupons with search, status filtering, and pagination
+ */
+router.get(
+  '/coupons',
+  authenticate,
+  authorize('admin'),
+  validateQuery(couponQuerySchema),
+  CouponController.getCoupons
+);
+
+/**
+ * GET /api/admin/coupons/:id
+ * Protected: Get coupon detail by ID with redemption metrics
+ */
+router.get(
+  '/coupons/:id',
+  authenticate,
+  authorize('admin'),
+  validateParams(couponParamSchema),
+  CouponController.getCouponById
+);
+
+/**
+ * PATCH /api/admin/coupons/:id
+ * Protected: Update coupon fields, dates, or active status
+ */
+router.patch(
+  '/coupons/:id',
+  authenticate,
+  authorize('admin'),
+  validateParams(couponParamSchema),
+  validateBody(updateCouponSchema),
+  CouponController.updateCoupon
+);
+
+/**
+ * DELETE /api/admin/coupons/:id
+ * Protected: Delete unused coupon or deactivate if historical redemptions exist
+ */
+router.delete(
+  '/coupons/:id',
+  authenticate,
+  authorize('admin'),
+  validateParams(couponParamSchema),
+  CouponController.deleteCoupon
 );
 
 export const adminRoutes = router;

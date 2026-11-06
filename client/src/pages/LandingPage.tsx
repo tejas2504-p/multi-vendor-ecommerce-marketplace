@@ -19,7 +19,11 @@ import { ProductSearchExperience } from '../components/search/ProductSearchExper
 import { AuthRoleTestingPanel } from '../components/auth/AuthRoleTestingPanel';
 import { VendorPortalTestingPanel } from '../components/vendor/VendorPortalTestingPanel';
 import { VendorOrdersManager } from '../components/vendor/VendorOrdersManager';
+import { VendorEarningsDashboard } from '../components/vendor/VendorEarningsDashboard';
 import { AdminOrdersManager } from '../components/admin/AdminOrdersManager';
+import { AdminPayoutsManager } from '../components/admin/AdminPayoutsManager';
+import { AdminReviewsModerator } from '../components/admin/AdminReviewsModerator';
+import { AdminCouponsManager } from '../components/admin/AdminCouponsManager';
 
 export const LandingPage: React.FC = () => {
   const { activeRole, setActiveRole } = useApp();
@@ -185,23 +189,63 @@ export const LandingPage: React.FC = () => {
 
       {/* Phase 7B: Vendor Order Fulfillment Panel */}
       {(activeRole === 'vendor' || activeRole === 'admin') && (
-        <section className="space-y-3">
-          <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            <h2 className="text-lg font-bold text-slate-900">Vendor Fulfillment & Shipment Dispatch</h2>
+        <section className="space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <h2 className="text-lg font-bold text-slate-900">Vendor Fulfillment & Shipment Dispatch</h2>
+            </div>
+            <VendorOrdersManager />
           </div>
-          <VendorOrdersManager />
+
+          {/* Phase 8B: Vendor Earnings, Commission & Payout Console */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+              <h2 className="text-lg font-bold text-slate-900">Vendor Earnings & Balance Payouts</h2>
+            </div>
+            <VendorEarningsDashboard />
+          </div>
         </section>
       )}
 
       {/* Phase 7B: Admin Multi-Vendor Governance Panel */}
       {activeRole === 'admin' && (
-        <section className="space-y-3">
-          <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-            <h2 className="text-lg font-bold text-slate-900">Super-Admin Order Governance & Oversight</h2>
+        <section className="space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+              <h2 className="text-lg font-bold text-slate-900">Super-Admin Order Governance & Oversight</h2>
+            </div>
+            <AdminOrdersManager />
           </div>
-          <AdminOrdersManager />
+
+          {/* Phase 8B: Admin Platform Commission & Payout Treasury */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+              <h2 className="text-lg font-bold text-slate-900">Platform Commission & Payout Treasury</h2>
+            </div>
+            <AdminPayoutsManager />
+          </div>
+
+          {/* Phase 9A: Admin Product Review Moderation Console */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              <h2 className="text-lg font-bold text-slate-900">Product Review Moderation Console</h2>
+            </div>
+            <AdminReviewsModerator />
+          </div>
+
+          {/* Phase 9B: Admin Marketplace Coupon & Discount Engine */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              <h2 className="text-lg font-bold text-slate-900">Marketplace Coupon & Discount Engine</h2>
+            </div>
+            <AdminCouponsManager />
+          </div>
         </section>
       )}
 

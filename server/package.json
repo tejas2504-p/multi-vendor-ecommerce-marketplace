@@ -24,7 +24,10 @@
     "test:checkout": "tsx src/tests/runCheckoutTests.ts",
     "test:multivendor": "tsx src/tests/runMultiVendorOrderTests.ts",
     "test:payment": "tsx src/tests/runPaymentTests.ts",
-    "test": "tsx src/tests/runAuthTests.ts && tsx src/tests/runRbacTests.ts && tsx src/tests/runVendorOnboardingTests.ts && tsx src/tests/runAdminVendorApprovalTests.ts && tsx src/tests/runProductTests.ts && tsx src/tests/runImageUploadTests.ts && tsx src/tests/runElasticsearchTests.ts && tsx src/tests/runProductSearchTests.ts && tsx src/tests/runCartTests.ts && tsx src/tests/runCheckoutTests.ts && tsx src/tests/runMultiVendorOrderTests.ts && tsx src/tests/runPaymentTests.ts"
+    "test:commission": "tsx src/tests/runCommissionPayoutTests.ts",
+    "test:reviews": "tsx src/tests/runReviewTests.ts",
+    "test:coupons": "tsx src/tests/runCouponTests.ts",
+    "test": "tsx src/tests/runAuthTests.ts && tsx src/tests/runRbacTests.ts && tsx src/tests/runVendorOnboardingTests.ts && tsx src/tests/runAdminVendorApprovalTests.ts && tsx src/tests/runProductTests.ts && tsx src/tests/runImageUploadTests.ts && tsx src/tests/runElasticsearchTests.ts && tsx src/tests/runProductSearchTests.ts && tsx src/tests/runCartTests.ts && tsx src/tests/runCheckoutTests.ts && tsx src/tests/runMultiVendorOrderTests.ts && tsx src/tests/runPaymentTests.ts && tsx src/tests/runCommissionPayoutTests.ts && tsx src/tests/runReviewTests.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.540.0",

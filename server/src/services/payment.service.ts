@@ -8,6 +8,7 @@ import { env } from '../config/env.config';
 import { AppError } from '../utils/apiError';
 import { VerifyPaymentInput } from '../validators/payment.validator';
 import { logger } from '../utils/logger';
+import { CommissionService } from './commission.service';
 
 export interface RazorpayOrderCheckoutData {
   keyId: string;
@@ -209,6 +210,13 @@ export class PaymentService {
     order.paymentStatus = 'paid';
     await order.save();
 
+    // Trigger Phase 8B: Platform Commission Calculation & Vendor Earnings recording
+    try {
+      await CommissionService.calculateAndRecordCommission(order._id);
+    } catch (commErr: any) {
+      logger.error(`Commission recording failed for order ${order.orderNumber}: ${commErr.message}`);
+    }
+
     logger.info(`Payment verified and captured successfully for order ${order.orderNumber}`);
 
     return { payment, order, isDuplicate: false };
@@ -272,6 +280,13 @@ export class PaymentService {
               { $set: { paymentStatus: 'paid' } }
             );
             logger.info(`Webhook reconciled payment.captured for order ${payment.parentOrderId}`);
+
+            // Trigger Phase 8B: Platform Commission Calculation & Vendor Earnings recording
+            try {
+              await CommissionService.calculateAndRecordCommission(payment.parentOrderId);
+            } catch (commErr: any) {
+              logger.error(`Commission recording failed for order ${payment.parentOrderId}: ${commErr.message}`);
+            }
           } else if (eventType === 'payment.failed') {
             payment.status = 'failed';
             payment.razorpayPaymentId = rzpPaymentId;

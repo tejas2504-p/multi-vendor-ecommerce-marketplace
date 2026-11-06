@@ -24,6 +24,14 @@ export interface IOrderStatusHistoryEntry {
   note?: string;
 }
 
+export interface ICommissionSnapshot {
+  grossAmount: number;
+  commissionRate: number;
+  platformFee: number;
+  vendorEarnings: number;
+  calculatedAt: Date;
+}
+
 export interface IVendorOrder {
   _id?: Types.ObjectId;
   parentOrderId: Types.ObjectId;
@@ -32,8 +40,11 @@ export interface IVendorOrder {
   items: IOrderItemSnapshot[];
   vendorSubtotal: number;
   shippingShare: number;
+  discountShare?: number;
+  discountAmount?: number;
   orderStatus: VendorOrderStatus;
   shipmentTracking?: IShipmentTracking;
+  commission?: ICommissionSnapshot;
   cancellationReason?: string;
   cancelledAt?: Date;
   statusHistory: IOrderStatusHistoryEntry[];
@@ -51,6 +62,17 @@ const shipmentTrackingSchema = new Schema<IShipmentTracking>(
     estimatedDeliveryDate: { type: Date },
     shippedAt: { type: Date },
     deliveredAt: { type: Date },
+  },
+  { _id: false }
+);
+
+const commissionSnapshotSchema = new Schema<ICommissionSnapshot>(
+  {
+    grossAmount: { type: Number, required: true },
+    commissionRate: { type: Number, required: true },
+    platformFee: { type: Number, required: true },
+    vendorEarnings: { type: Number, required: true },
+    calculatedAt: { type: Date, default: Date.now },
   },
   { _id: false }
 );
@@ -145,6 +167,16 @@ const vendorOrderSchema = new Schema<IVendorOrder, VendorOrderModel>(
       default: 0,
       min: [0, 'Shipping share cannot be negative'],
     },
+    discountShare: {
+      type: Number,
+      default: 0,
+      min: [0, 'Discount share cannot be negative'],
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Discount amount cannot be negative'],
+    },
     orderStatus: {
       type: String,
       enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
@@ -153,6 +185,9 @@ const vendorOrderSchema = new Schema<IVendorOrder, VendorOrderModel>(
     shipmentTracking: {
       type: shipmentTrackingSchema,
       default: () => ({}),
+    },
+    commission: {
+      type: commissionSnapshotSchema,
     },
     cancellationReason: {
       type: String,

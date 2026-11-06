@@ -3,8 +3,10 @@ import { Cart } from '../models/cart.model';
 import { Product } from '../models/product.model';
 import { VendorProfile } from '../models/vendorProfile.model';
 import { Address } from '../models/address.model';
-import { Order, IOrder, IOrderItemSnapshot, IDeliveryAddressSnapshot } from '../models/order.model';
+import { Order, IOrder, IOrderItemSnapshot, IDeliveryAddressSnapshot, ICouponSnapshot } from '../models/order.model';
 import { VendorOrder, IVendorOrder } from '../models/vendorOrder.model';
+import { Coupon } from '../models/coupon.model';
+import { CouponUsage } from '../models/couponUsage.model';
 import { CartCacheService } from './cartCache.service';
 import { AppError } from '../utils/apiError';
 import { CheckoutInput } from '../validators/checkout.validator';
@@ -71,6 +73,14 @@ export class CheckoutService {
 
     // 4. Validate all products, vendors, stock, and calculate prices on backend
     const orderItems: IOrderItemSnapshot[] = [];
+    const validatedItemData: Array<{
+      productId: Types.ObjectId;
+      vendorId: Types.ObjectId;
+      categoryId: Types.ObjectId;
+      quantity: number;
+      unitPrice: number;
+      itemSubtotal: number;
+    }> = [];
     let subtotal = 0;
 
     for (const item of cart.items) {
@@ -119,13 +129,118 @@ export class CheckoutService {
         unitPrice,
         itemSubtotal,
       });
+
+      validatedItemData.push({
+        productId: product._id,
+        vendorId: product.vendorId,
+        categoryId: product.categoryId,
+        quantity: item.quantity,
+        unitPrice,
+        itemSubtotal,
+      });
     }
 
     subtotal = Math.round(subtotal * 100) / 100;
     // Standard shipping: Free if subtotal >= $100, else flat $10
     const shippingAmount = subtotal >= 100 ? 0 : 10;
-    const discountAmount = 0;
-    const totalAmount = Math.round((subtotal + shippingAmount - discountAmount) * 100) / 100;
+
+    // Coupon validation & discount calculation
+    let discountAmount = 0;
+    let couponSnapshot: ICouponSnapshot | undefined = undefined;
+    let appliedCoupon: any = null;
+
+    if (input.couponCode) {
+      const normalizedCode = input.couponCode.trim().toUpperCase();
+      const coupon = await Coupon.findOne({ code: normalizedCode });
+      if (!coupon) {
+        throw AppError.notFound(`Invalid coupon code: "${normalizedCode}" does not exist`);
+      }
+      if (!coupon.isActive) {
+        throw AppError.badRequest(`Coupon "${coupon.code}" is currently inactive`);
+      }
+      const now = new Date();
+      if (now < coupon.startDate) {
+        throw AppError.badRequest(
+          `Coupon "${coupon.code}" is not active yet (starts on ${coupon.startDate.toLocaleDateString()})`
+        );
+      }
+      if (now > coupon.expiryDate) {
+        throw AppError.badRequest(
+          `Coupon "${coupon.code}" has expired on ${coupon.expiryDate.toLocaleDateString()}`
+        );
+      }
+      if (coupon.totalUsageLimit !== undefined && coupon.totalUsageLimit !== null && coupon.usageCount >= coupon.totalUsageLimit) {
+        throw AppError.badRequest(`Coupon "${coupon.code}" global usage limit has been reached`);
+      }
+      const userUsageCount = await CouponUsage.countDocuments({
+        couponId: coupon._id,
+        customerId: userObjectId,
+        status: { $ne: 'reversed' },
+      });
+      if (userUsageCount >= coupon.perUserUsageLimit) {
+        throw AppError.badRequest(
+          `You have already reached the maximum redemption limit (${coupon.perUserUsageLimit}) for coupon "${coupon.code}"`
+        );
+      }
+
+      // Check item eligibility against restrictions
+      const applicableProductIds = new Set(coupon.applicableProducts.map((p) => p.toString()));
+      const applicableCategoryIds = new Set(coupon.applicableCategories.map((c) => c.toString()));
+      const applicableVendorIds = new Set(coupon.applicableVendors.map((v) => v.toString()));
+
+      const hasProductFilter = applicableProductIds.size > 0;
+      const hasCategoryFilter = applicableCategoryIds.size > 0;
+      const hasVendorFilter = applicableVendorIds.size > 0;
+      const hasAnyFilter = hasProductFilter || hasCategoryFilter || hasVendorFilter;
+
+      let eligibleSubtotal = 0;
+      for (const it of validatedItemData) {
+        let isEligible = true;
+        if (hasProductFilter && !applicableProductIds.has(it.productId.toString())) isEligible = false;
+        if (hasCategoryFilter && !applicableCategoryIds.has(it.categoryId.toString())) isEligible = false;
+        if (hasVendorFilter && !applicableVendorIds.has(it.vendorId.toString())) isEligible = false;
+        if (!hasAnyFilter) isEligible = true;
+
+        if (isEligible) {
+          eligibleSubtotal += it.itemSubtotal;
+        }
+      }
+
+      eligibleSubtotal = Math.round(eligibleSubtotal * 100) / 100;
+      if (eligibleSubtotal <= 0) {
+        throw AppError.badRequest(`Coupon "${coupon.code}" is not applicable to any items in your cart`);
+      }
+
+      if (subtotal < coupon.minimumOrderAmount) {
+        throw AppError.badRequest(
+          `Minimum order amount of $${coupon.minimumOrderAmount.toFixed(
+            2
+          )} required to apply coupon "${coupon.code}" (current subtotal: $${subtotal.toFixed(2)})`
+        );
+      }
+
+      let discount = 0;
+      if (coupon.discountType === 'percentage') {
+        discount = (eligibleSubtotal * coupon.discountValue) / 100;
+        if (coupon.maximumDiscountAmount !== undefined && coupon.maximumDiscountAmount !== null) {
+          discount = Math.min(discount, coupon.maximumDiscountAmount);
+        }
+      } else {
+        discount = Math.min(coupon.discountValue, eligibleSubtotal);
+      }
+
+      discountAmount = Math.min(Math.round(discount * 100) / 100, eligibleSubtotal);
+      couponSnapshot = {
+        couponId: coupon._id,
+        code: coupon.code,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        discountAmount,
+      };
+      appliedCoupon = coupon;
+    }
+
+    const totalAmount = Math.max(0, Math.round((subtotal + shippingAmount - discountAmount) * 100) / 100);
 
     // Generate unique human-readable order number (e.g. ORD-173089-ABCD)
     const timestampStr = Date.now().toString(36).toUpperCase();
@@ -142,21 +257,66 @@ export class CheckoutService {
       vendorMap.get(vKey)!.push(it);
     }
 
-    // Prepare vendor order payloads
+    // Calculate eligible subtotal per vendor for proportional discount allocation
+    const vendorEligibleMap = new Map<string, number>();
+    for (const [vKey, vItems] of vendorMap.entries()) {
+      let vEligible = 0;
+      for (const item of vItems) {
+        const itemInfo = validatedItemData.find((vi) => vi.productId.toString() === item.productId.toString());
+        let isEligible = true;
+        if (appliedCoupon) {
+          const appProd = new Set(appliedCoupon.applicableProducts.map((p: any) => p.toString()));
+          const appCat = new Set(appliedCoupon.applicableCategories.map((c: any) => c.toString()));
+          const appVen = new Set(appliedCoupon.applicableVendors.map((v: any) => v.toString()));
+          const hasFilter = appProd.size > 0 || appCat.size > 0 || appVen.size > 0;
+
+          if (appProd.size > 0 && !appProd.has(item.productId.toString())) isEligible = false;
+          if (appCat.size > 0 && itemInfo && !appCat.has(itemInfo.categoryId.toString())) isEligible = false;
+          if (appVen.size > 0 && !appVen.has(item.vendorId.toString())) isEligible = false;
+          if (!hasFilter) isEligible = true;
+        }
+        if (isEligible) {
+          vEligible += item.itemSubtotal;
+        }
+      }
+      vendorEligibleMap.set(vKey, Math.round(vEligible * 100) / 100);
+    }
+
+    const totalEligibleSubtotal = Array.from(vendorEligibleMap.values()).reduce((sum, v) => sum + v, 0);
+
+    // Prepare vendor order payloads with exact penny reconciliation
     const vendorOrderPayloads: Array<{
       vendorId: Types.ObjectId;
       vendorOrderNumber: string;
       items: IOrderItemSnapshot[];
       vendorSubtotal: number;
       shippingShare: number;
+      discountShare: number;
+      discountAmount: number;
       orderStatus: 'confirmed';
     }> = [];
 
-    let vCount = 1;
-    for (const [vKey, vItems] of vendorMap.entries()) {
+    const vendorKeys = Array.from(vendorMap.keys());
+    let allocatedDiscountSum = 0;
+
+    for (let i = 0; i < vendorKeys.length; i++) {
+      const vKey = vendorKeys[i];
+      const vItems = vendorMap.get(vKey)!;
       const vSubtotal = Math.round(vItems.reduce((sum, item) => sum + item.itemSubtotal, 0) * 100) / 100;
-      const vOrderNum = `${orderNumber}-V${vCount++}`;
+      const vOrderNum = `${orderNumber}-V${i + 1}`;
       const vShippingShare = subtotal > 0 ? Math.round((vSubtotal / subtotal) * shippingAmount * 100) / 100 : 0;
+
+      let vDiscount = 0;
+      if (discountAmount > 0 && totalEligibleSubtotal > 0) {
+        const vEligible = vendorEligibleMap.get(vKey) || 0;
+        if (i === vendorKeys.length - 1) {
+          // Last vendor order absorbs rounding difference so sum equals parent discount exactly
+          vDiscount = Math.max(0, Math.round((discountAmount - allocatedDiscountSum) * 100) / 100);
+        } else {
+          vDiscount = Math.round((vEligible / totalEligibleSubtotal) * discountAmount * 100) / 100;
+          allocatedDiscountSum += vDiscount;
+        }
+      }
 
       vendorOrderPayloads.push({
         vendorId: new Types.ObjectId(vKey),
@@ -164,6 +324,8 @@ export class CheckoutService {
         items: vItems,
         vendorSubtotal: vSubtotal,
         shippingShare: vShippingShare,
+        discountShare: vDiscount,
+        discountAmount: vDiscount,
         orderStatus: 'confirmed',
       });
     }
@@ -178,12 +340,14 @@ export class CheckoutService {
       shippingAmount,
       discountAmount,
       totalAmount,
+      couponCode: appliedCoupon ? appliedCoupon.code : undefined,
+      couponSnapshot,
       paymentStatus: 'pending',
       orderStatus: 'confirmed',
       idempotencyKey: input.idempotencyKey,
     };
 
-    // 5. Concurrency-safe stock updates & order creation
+    // 5. Concurrency-safe stock updates, coupon reservation & order creation
     let createdOrder!: IOrder;
 
     // Check if deployment supports replica set transactions
@@ -219,6 +383,27 @@ export class CheckoutService {
           }
         }
 
+        // Atomic coupon usage increment within transaction
+        if (appliedCoupon) {
+          const couponFilter: any = {
+            _id: appliedCoupon._id,
+            isActive: true,
+          };
+          if (appliedCoupon.totalUsageLimit !== undefined && appliedCoupon.totalUsageLimit !== null) {
+            couponFilter.usageCount = { $lt: appliedCoupon.totalUsageLimit };
+          }
+
+          const updatedCoupon = await Coupon.findOneAndUpdate(
+            couponFilter,
+            { $inc: { usageCount: 1 } },
+            { session, new: true }
+          );
+
+          if (!updatedCoupon) {
+            throw AppError.badRequest(`Coupon "${appliedCoupon.code}" usage limit was reached during checkout`);
+          }
+        }
+
         const [order] = await Order.create([orderData], { session });
         createdOrder = order;
 
@@ -238,6 +423,23 @@ export class CheckoutService {
           { $set: { vendorOrders: createdVendorOrders, customerId: userObjectId } },
           { session }
         );
+
+        // Record coupon usage in ledger within transaction
+        if (appliedCoupon) {
+          await CouponUsage.create(
+            [
+              {
+                couponId: appliedCoupon._id,
+                customerId: userObjectId,
+                orderId: createdOrder._id,
+                discountAmount,
+                status: 'applied',
+                appliedAt: new Date(),
+              },
+            ],
+            { session }
+          );
+        }
 
         // Clear cart in persistent DB
         await Cart.updateOne({ _id: cart._id }, { items: [] }, { session });
@@ -264,6 +466,7 @@ export class CheckoutService {
     if (!transactionSuccess) {
       // Standalone / Non-replica-set mode: Atomic conditional updates with strict compensation rollback
       const decrementedItems: Array<{ productId: Types.ObjectId; quantity: number }> = [];
+      let couponReserved = false;
 
       try {
         for (const item of cart.items) {
@@ -285,6 +488,28 @@ export class CheckoutService {
           decrementedItems.push({ productId: item.productId, quantity: item.quantity });
         }
 
+        // Atomic coupon usage increment in standalone mode
+        if (appliedCoupon) {
+          const couponFilter: any = {
+            _id: appliedCoupon._id,
+            isActive: true,
+          };
+          if (appliedCoupon.totalUsageLimit !== undefined && appliedCoupon.totalUsageLimit !== null) {
+            couponFilter.usageCount = { $lt: appliedCoupon.totalUsageLimit };
+          }
+
+          const updatedCoupon = await Coupon.findOneAndUpdate(
+            couponFilter,
+            { $inc: { usageCount: 1 } },
+            { new: true }
+          );
+
+          if (!updatedCoupon) {
+            throw AppError.badRequest(`Coupon "${appliedCoupon.code}" usage limit was reached during checkout`);
+          }
+          couponReserved = true;
+        }
+
         createdOrder = await Order.create(orderData);
 
         // Create child vendor orders
@@ -303,9 +528,28 @@ export class CheckoutService {
           { $set: { vendorOrders: createdVendorOrders, customerId: userObjectId } }
         );
 
+        // Record coupon usage
+        if (appliedCoupon) {
+          await CouponUsage.create({
+            couponId: appliedCoupon._id,
+            customerId: userObjectId,
+            orderId: createdOrder._id,
+            discountAmount,
+            status: 'applied',
+            appliedAt: new Date(),
+          });
+        }
+
         // Clear cart in persistent DB
         await Cart.updateOne({ _id: cart._id }, { items: [] });
       } catch (error) {
+        // Rollback coupon reservation if applied
+        if (couponReserved && appliedCoupon) {
+          await Coupon.updateOne({ _id: appliedCoupon._id }, { $inc: { usageCount: -1 } });
+          if (createdOrder?._id) {
+            await CouponUsage.deleteOne({ couponId: appliedCoupon._id, orderId: createdOrder._id });
+          }
+        }
         // Rollback created child vendor orders & parent order
         if (createdOrder?._id) {
           await VendorOrder.deleteMany({ parentOrderId: createdOrder._id });

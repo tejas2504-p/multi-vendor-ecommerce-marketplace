@@ -20,6 +20,7 @@ export interface IVendorProfile {
   businessPhone: string;
   businessAddress: IBusinessAddress;
   status: VendorApplicationStatus;
+  commissionRate?: number;
   rejectionReason?: string;
   reviewedBy?: Types.ObjectId;
   reviewedAt?: Date;
@@ -125,6 +126,11 @@ const vendorProfileSchema = new Schema<IVendorProfile, VendorProfileModel>(
       },
       default: 'pending',
       index: true,
+    },
+    commissionRate: {
+      type: Number,
+      min: [0, 'Commission rate cannot be negative'],
+      max: [100, 'Commission rate cannot exceed 100%'],
     },
     rejectionReason: {
       type: String,

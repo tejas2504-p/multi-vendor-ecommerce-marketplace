@@ -11,6 +11,7 @@ import {
 import { ProductSearchBar } from './ProductSearchBar';
 import { ProductFilterSidebar } from './ProductFilterSidebar';
 import { ProductGridCard } from './ProductGridCard';
+import { ProductDetailModal } from '../reviews/ProductDetailModal';
 import { productSearchApi } from '../../services/productSearch.api';
 import {
   ProductSearchResponse,
@@ -52,6 +53,7 @@ export const ProductSearchExperience: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState<boolean>(false);
+  const [selectedProduct, setSelectedProduct] = useState<IndexedProduct | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -408,10 +410,20 @@ export const ProductSearchExperience: React.FC = () => {
           {!isLoading && !errorMessage && products.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
               {products.map((p) => (
-                <ProductGridCard key={p.productId} product={p} />
+                <ProductGridCard
+                  key={p.productId}
+                  product={p}
+                  onSelect={setSelectedProduct}
+                />
               ))}
             </div>
           )}
+
+          {/* Product Detail & Reviews Modal */}
+          <ProductDetailModal
+            product={selectedProduct}
+            onClose={() => setSelectedProduct(null)}
+          />
 
           {/* Pagination Controls */}
           {!isLoading && totalPages > 1 && (

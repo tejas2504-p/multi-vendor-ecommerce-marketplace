@@ -13,6 +13,13 @@ export const checkoutSchema = z.object({
     .min(8, 'Idempotency key must be at least 8 characters')
     .max(128, 'Idempotency key cannot exceed 128 characters')
     .optional(),
+  couponCode: z
+    .string()
+    .trim()
+    .min(1)
+    .max(30)
+    .transform((val) => val.toUpperCase())
+    .optional(),
 });
 
 export const orderIdParamSchema = z.object({
