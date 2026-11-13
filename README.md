@@ -1235,24 +1235,150 @@ Phase 9B implements a coupon and promotion system supporting percentage and fixe
 
 ---
 
-### Verified Phase 9B Coupon & Discount Management Test Suite (16 Tests)
-Run using `npm run test:coupons`:
-1. **Create percentage coupon**: Admin creates percentage coupon with max cap and min order (`201 Created`).
-2. **Create fixed discount coupon**: Admin creates fixed amount coupon (`201 Created`).
-3. **Apply valid coupon**: Customer validates coupon against cart; discount and payable amounts calculated correctly (`200 OK`).
-4. **Apply expired coupon**: Expired coupon rejected with `400 Bad Request`.
-5. **Apply inactive coupon**: Inactive coupon rejected with `400 Bad Request`.
-6. **Apply coupon before start date**: Scheduled future coupon rejected with `400 Bad Request`.
-7. **Test minimum order amount**: Cart below required minimum subtotal rejected with `400 Bad Request`.
-8. **Test maximum discount cap**: Percentage discount accurately capped at `maximumDiscountAmount`.
-9. **Test global usage limit**: Coupon that has reached `totalUsageLimit` rejected with `400 Bad Request`.
-10. **Test per-user usage limit**: Customer who redeemed `perUserUsageLimit` rejected; other customers can still redeem.
-11. **Test vendor-specific coupon**: Discount calculated strictly on items belonging to the target vendor.
-12. **Test invalid coupon code**: Non-existent coupon code rejected with `404 Not Found`.
-13. **Test simultaneous coupon redemption**: Concurrent checkouts on last remaining coupon slot result in exactly 1 success and 1 rejection without race condition.
-14. **Test duplicate checkout submission**: Idempotency key prevents duplicate coupon incrementation and duplicate order creation.
-15. **Verify Razorpay amount matches final payable amount**: Razorpay order amount strictly matches discounted total in paise.
-16. **Verify order and vendor order totals reconcile**: Sum of vendor subtotals, vendor discounts, shipping shares, and net totals match parent order totals to the penny.
+---
+
+## 📄 Phase 10A – PDF Invoice Generation and Order Documents
+
+Production-grade, server-side PDF invoice generation, multi-vendor tax document architecture, and customer order document delivery.
+
+### 🏗️ Architecture & Implementation Highlights
+1. **Invoice Model (`Invoice`)**:
+   - `invoiceNumber`: Monotonically structured, unique identifier (`INV-YYYY-XXXXX-XXXX`) indexed with unique constraint.
+   - `parentOrderId` & `vendorOrderId`: References to parent order and child vendor sub-order.
+   - `customerId` & `vendorId`: References to the purchasing customer and fulfillment merchant.
+   - `invoiceType`: Differentiates customer marketplace tax invoice (`customer_parent`) vs vendor sub-order invoice (`vendor_order`).
+   - Immutable historical snapshots:
+     - `issuerDetails`: Platform Facilitator (`NexusMarket Platform Ltd`, tax ID, address) or Vendor Merchant (`storeName`, `businessAddress`, `businessPhone`, `businessEmail`).
+     - `customerDetails`: Customer name, email, phone.
+     - `billingAddress` & `shippingAddress`: Full delivery address snapshots from checkout.
+     - `items`: Line item snapshot with product name, quantity, unit price, item subtotal, tax rate, and discounts.
+     - `taxBreakdown`: Verified tax components (`totalTax`, `cgst`, `sgst`, `igst`, `rate`) without fabricated GST rates.
+     - `pdfStorageKey`: Local secure file system reference in `server/uploads/invoices/`.
+2. **Server-Side PDF Generation (`PdfGeneratorService`)**:
+   - Built with high-performance vector-based `PDFKit` library.
+   - Enterprise layout with branded header banner, two-column Issuer vs Bill/Ship To cards, styled alternating line item rows, right-aligned summary card, legal declaration, and dynamic pagination (`Page X of Y`).
+   - Clean currency formatting (`INR 1,250.00`).
+3. **Multi-Vendor Invoice Architecture**:
+   - **Customer Parent Invoice (`customer_parent`)**: Facilitator model invoice showing all items purchased across multiple vendors, platform legal entity, parent shipping amount, parent coupon discounts, and overall paid total.
+   - **Vendor Sub-Order Invoice (`vendor_order`)**: Merchant model invoice showing only that specific vendor's products, merchant's legal business name/address, vendor's subtotal, vendor shipping share, and vendor coupon discount share.
+4. **Financial Reconciliation Invariant**:
+   $$\text{totalAmount} \equiv \text{subtotal} - \text{discountAmount} + \text{shippingAmount} + \text{taxAmount}$$
+   $$\text{parentTotalAmount} \equiv \sum_{\text{vendors}} (\text{vendorSubtotal} - \text{vendorDiscountShare} + \text{vendorShippingShare} + \text{vendorTaxShare})$$
+5. **Idempotency & Non-Regeneration Guarantee**:
+   - Existing invoices are indexed by `(parentOrderId, invoiceType)` and `(parentOrderId, vendorOrderId, invoiceType)`.
+   - Subsequent invoice requests or re-downloads return the exact same invoice number and document without duplicate record creation.
+6. **Automatic Document Healing**:
+   - If a physical PDF file is accidentally deleted from local disk storage, the service transparently regenerates the physical PDF using stored snapshot data on the fly, without altering the invoice number or database record.
+7. **Storage Security**:
+   - Generated PDFs are stored in a dedicated private directory (`server/uploads/invoices/`), completely isolated from public asset folders and protected from git commits via `.gitignore`.
+8. **Role-Based Access Control (RBAC)**:
+   - Customers can only access and download invoices for orders they placed.
+   - Vendors can only access and download invoices for their own vendor sub-orders.
+   - Admins can query, inspect, and download all platform and vendor invoices.
+
+---
+
+### 📡 Phase 10A API Endpoints
+- `GET /api/invoices` — List invoices with role-based filtering, customer isolation, and pagination.
+- `GET /api/invoices/:invoiceId` — Retrieve JSON metadata for a specific invoice.
+- `GET /api/invoices/:invoiceId/download` — Stream PDF invoice with `Content-Type: application/pdf` and `Content-Disposition: attachment; filename="Invoice-INV-XXXX.pdf"`.
+- `GET /api/orders/:orderId/invoice` — Retrieve or on-demand generate the customer / vendor tax invoice for an order.
+
+---
+
+### 🖥️ Frontend Deliverables
+- **`invoice.api.ts`**: Client service for invoice retrieval, role listing, and blob-based automatic PDF download.
+- **`CustomerOrdersModal.tsx`**: Integrated "Download Tax Invoice" action with loading spinner and error feedback in the customer order history dialog.
+- **`AdminOrdersManager.tsx`**: Integrated invoice download action buttons on both Parent Orders and Child Vendor Orders tables in the administrative governance dashboard.
+
+---
+
+### Verified Phase 10A Invoice Integration Test Suite (15 Tests)
+Run using `npm run test:invoices`:
+1. **Invoice Model schema validation and indexes**: Validates fields, required snapshots, and compound indexes (`200 OK`).
+2. **Unique invoice number format and collision avoidance**: Generates 50 unique invoice numbers matching monotonic pattern `INV-YYYY-XXXXX-XXXX`.
+3. **Customer parent invoice generation**: Generates customer invoice with Platform Facilitator issuer details and writes PDF file to disk.
+4. **Financial reconciliation invariant**: Validates $\text{totalAmount} \equiv \text{subtotal} - \text{discountAmount} + \text{shippingAmount} + \text{taxAmount}$.
+5. **Line items snapshot accuracy from order and products**: Line items snapshot captures accurate historical product names, quantities, and prices.
+6. **Tax breakdown snapshot verification**: Validates `taxBreakdown` reflects verified configured order data without fabricated GST rates.
+7. **Coupon discount allocation snapshot**: Validates parent and vendor discount allocations are accurately recorded.
+8. **Vendor sub-order invoice generation**: Generates vendor invoice referencing `vendorOrderId`, containing only that vendor's items.
+9. **Vendor invoice issuer details snapshot**: Validates vendor invoice issuer contains merchant's store name, address, and contact info.
+10. **Idempotency: repeated generation returns identical invoice**: Repeated requests return identical invoice number without duplicate creation.
+11. **GET `/api/invoices` role-based listing and customer isolation**: Customers only see their invoices; admin sees all.
+12. **GET `/api/invoices/:invoiceId` authorization enforcement**: Owner customer and admin allowed; non-owner customer rejected with `403 Forbidden`.
+13. **GET `/api/invoices/:invoiceId/download` streams PDF file**: Endpoint returns `200` with `application/pdf` stream and attachment header.
+14. **GET `/api/orders/:orderId/invoice` retrieves/generates invoice**: Automatically generates or retrieves invoice for customer order.
+15. **Automatic regeneration if physical PDF file is deleted**: Deleting the physical file from disk and requesting download transparently regenerates the PDF with unchanged invoice number.
+
+---
+
+## 📊 Phase 10B – Admin Analytics and Business Intelligence
+
+Production-ready executive business intelligence suite providing high-performance MongoDB aggregations, Redis-backed analytical caching, and interactive data visualization for platform administrators.
+
+### 🏗️ Architecture & Implementation Highlights
+1. **Analytics Engine (`AnalyticsService`)**:
+   - Built on indexed MongoDB aggregation pipelines using `$facet`, `$lookup`, `$unwind`, `$group`, and `$dateToString`.
+   - Reconciles financial metrics across `Order`, `VendorOrder`, `Payment`, `VendorEarnings`, and `VendorPayout` models without data duplication.
+   - **Revenue Integrity**: Strictly aggregates from verified payment records (`Payment.status === 'captured'`). Failed, pending, or duplicate payments are never counted towards gross platform revenue.
+   - **Fulfillment Stage Isolation**: Accurately differentiates parent order volume from child vendor sub-order packages to eliminate double-counting.
+2. **Caching & Invalidation Strategy (`AnalyticsCacheService`)**:
+   - Caches computationally intensive analytical responses in Redis with a 5-minute TTL (`300s`).
+   - Dynamic query keying: `analytics:{endpoint}:{sortedQueryParams}`.
+   - Live cache bypass: Supports `?refresh=true` parameter across all endpoints to immediately pull live database metrics.
+   - Resilient offline fallback: Operates seamlessly using direct database aggregations when Redis is disconnected.
+3. **Date Filtering & Growth Mathematics**:
+   - Presets supported: `7d` (7 Days), `30d` (30 Days), `90d` (90 Days), `12m` (12 Months), or custom ISO date ranges (`startDate` / `endDate`).
+   - Mathematically symmetric previous-period comparison:
+     $$\Delta T = T_{\text{end}} - T_{\text{start}}$$
+     $$T_{\text{prevEnd}} = T_{\text{start}}, \quad T_{\text{prevStart}} = T_{\text{start}} - \Delta T$$
+     $$\text{Growth \%} = \frac{\text{Current} - \text{Previous}}{\text{Previous}} \times 100\%$$
+   - Handles zero previous-period amounts without NaN or divide-by-zero crashes.
+4. **Interactive SVG Line & Distribution Charts**:
+   - Pure React SVG rendering with smooth quadratic gradient fills, responsive viewBox scaling, and dotted reference gridlines.
+   - Hover tooltips with real-time cursor coordinate tracking.
+   - Multi-segment stacked progress bars representing order distribution across fulfillment stages.
+
+---
+
+### 📡 Phase 10B API Endpoints
+All endpoints are strictly protected by `authenticate` and `authorize('admin')` RBAC middleware:
+
+- `GET /api/admin/analytics/overview` — High-level KPI summary (customers, vendors, active products, parent/vendor orders, captured revenue, commission, pending/completed payouts).
+- `GET /api/admin/analytics/revenue` — Time-series revenue, successful order counts, Average Order Value (AOV), growth percentages, and chronological timeline.
+- `GET /api/admin/analytics/orders` — Order status distribution (pending, confirmed, processing, shipped, delivered, cancelled) and vendor shipment summaries.
+- `GET /api/admin/analytics/vendors` — Paginated merchant sales, order volumes, platform commission, net earnings, available balances, and top 5 merchants.
+- `GET /api/admin/analytics/products` — Best-selling catalog items ranked by units sold and revenue, low-stock threshold alerts (≤ 10), out-of-stock items, and category sales breakdown.
+- `GET /api/admin/analytics/commissions` — Platform fee totals, effective commission rate, chronological trend, and top contributing merchants.
+- `GET /api/admin/analytics/payouts` — Treasury liquidity balances, disbursement counts, status distribution (requested, approved, processing, paid, rejected, failed), and recent payout activity.
+
+---
+
+### 🖥️ Frontend Deliverables
+- **`analytics.api.ts`**: Complete typed Axios client module for all analytical endpoints with filter serialization.
+- **`AdminAnalyticsDashboard.tsx`**: Executive responsive dashboard featuring KPI metric cards with growth trends, SVG revenue trajectory chart with hover inspection, fulfillment health distribution bar, top vendors leaderboard, best-selling products table with stock indicators, inventory threshold alerts, and treasury balances.
+- **`LandingPage.tsx`**: Mounted prominently at the head of the Super-Admin console.
+
+---
+
+### Verified Phase 10B Analytics & BI Test Suite (15 Tests)
+Run using `npm run test:analytics`:
+1. **Admin authorization check**: Confirms administrative access (`200 OK`).
+2. **Customer RBAC rejection**: Unprivileged customers receive `403 Forbidden`.
+3. **Unauthenticated rejection**: Requests without JWT token receive `401 Unauthorized`.
+4. **Overview metrics accuracy**: Validates counts, captured revenue, platform commission, and payout amounts.
+5. **Revenue aggregation integrity**: Strictly counts captured payments ($410) and excludes failed transactions ($60).
+6. **Revenue timeline grouping**: Verifies grouping parameters (`daily`, `weekly`, `monthly`, `yearly`).
+7. **Order status distribution**: Reconciles delivered, shipped, and cancelled orders.
+8. **Vendor-wise aggregation**: Verifies vendor gross sales, commission deductions, and net earnings.
+9. **Best-selling products ranking**: Validates top product rankings based on units sold and total revenue.
+10. **Inventory stock alerts**: Detects low-stock items ($\le 10$) and depleted items ($0$).
+11. **Commission calculations**: Reconciles total platform fees and effective commission percentages.
+12. **Treasury payout reconciliation**: Reconciles available merchant balances and disbursement statuses.
+13. **Pagination enforcement**: Validates `page` and `limit` on vendor analytical queries.
+14. **Redis cache & refresh bypass**: Validates response caching and instant cache bypass using `?refresh=true`.
+15. **Graceful empty query response**: Future date range queries return zeroed metrics without divide-by-zero or `NaN`.
 
 ---
 

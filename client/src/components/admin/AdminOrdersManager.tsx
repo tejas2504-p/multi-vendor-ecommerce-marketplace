@@ -7,9 +7,11 @@ import {
   AlertCircle,
   CheckCircle2,
   Edit2,
+  FileText,
 } from 'lucide-react';
 import { Order, VendorOrder } from '../../types';
 import { orderApi } from '../../services/order.api';
+import { invoiceApi } from '../../services/invoice.api';
 import { useApp } from '../../context/AppContext';
 
 export const AdminOrdersManager: React.FC = () => {
@@ -21,6 +23,7 @@ export const AdminOrdersManager: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [downloadingOrderId, setDownloadingOrderId] = useState<string | null>(null);
 
   // Status override modal state
   const [overrideOrderId, setOverrideOrderId] = useState<string | null>(null);
@@ -29,6 +32,19 @@ export const AdminOrdersManager: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
   const isAdmin = isAuthenticated && user?.role === 'admin';
+
+  const handleDownloadInvoice = async (orderId: string, orderNumber: string, type: 'customer_parent' | 'vendor_order' = 'customer_parent', vendorOrderId?: string) => {
+    try {
+      setDownloadingOrderId(vendorOrderId || orderId);
+      setError(null);
+      const invoice = await invoiceApi.getOrderInvoice(orderId, { type, vendorOrderId });
+      await invoiceApi.downloadInvoicePdf(invoice._id, `Invoice-${orderNumber}.pdf`);
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'Failed to download invoice document');
+    } finally {
+      setDownloadingOrderId(null);
+    }
+  };
 
   const loadData = useCallback(async () => {
     if (!isAdmin) return;
@@ -223,6 +239,18 @@ export const AdminOrdersManager: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-black text-slate-900">${ord.totalAmount.toFixed(2)}</span>
                     <button
+                      onClick={() => handleDownloadInvoice(ord.id, ord.orderNumber)}
+                      disabled={downloadingOrderId === ord.id}
+                      title="Download Tax Invoice"
+                      className="p-1.5 text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 transition disabled:opacity-50"
+                    >
+                      {downloadingOrderId === ord.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" />
+                      ) : (
+                        <FileText className="w-3.5 h-3.5 text-slate-600" />
+                      )}
+                    </button>
+                    <button
                       onClick={() => setOverrideOrderId(ord.id)}
                       title="Admin Override"
                       className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg border border-purple-200 transition"
@@ -266,9 +294,23 @@ export const AdminOrdersManager: React.FC = () => {
                     {vo.orderStatus}
                   </span>
                 </div>
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between items-center text-slate-600">
                   <span>Items: {vo.items.length}</span>
-                  <span className="font-bold text-slate-900">${vo.vendorSubtotal.toFixed(2)}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-bold text-slate-900">${vo.vendorSubtotal.toFixed(2)}</span>
+                    <button
+                      onClick={() => handleDownloadInvoice(vo.parentOrderId, vo.vendorOrderNumber, 'vendor_order', vo.id)}
+                      disabled={downloadingOrderId === vo.id}
+                      title="Download Vendor Invoice"
+                      className="p-1 text-slate-700 hover:bg-slate-100 rounded border border-slate-200 transition disabled:opacity-50"
+                    >
+                      {downloadingOrderId === vo.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-purple-600" />
+                      ) : (
+                        <FileText className="w-3 h-3 text-slate-600" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 {vo.shipmentTracking?.trackingNumber && (
                   <p className="text-[11px] text-blue-600">

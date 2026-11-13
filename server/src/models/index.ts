@@ -21,6 +21,7 @@ export * from './review.model';
 export * from './reviewVote.model';
 export * from './coupon.model';
 export * from './couponUsage.model';
+export * from './invoice.model';
 
 export const registeredModels = [
   'User',
@@ -34,4 +35,5 @@ export const registeredModels = [
   'Payment',
   'Review',
   'Address',
+  'Invoice',
 ] as const;

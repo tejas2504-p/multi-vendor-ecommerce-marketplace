@@ -9,6 +9,7 @@ import { AppError } from '../utils/apiError';
 import { VerifyPaymentInput } from '../validators/payment.validator';
 import { logger } from '../utils/logger';
 import { CommissionService } from './commission.service';
+import { InvoiceService } from './invoice.service';
 
 export interface RazorpayOrderCheckoutData {
   keyId: string;
@@ -217,6 +218,13 @@ export class PaymentService {
       logger.error(`Commission recording failed for order ${order.orderNumber}: ${commErr.message}`);
     }
 
+    // Trigger Phase 10A: Automatic Invoice Generation
+    try {
+      await InvoiceService.generateInvoiceForOrder(order._id, { type: 'customer_parent' });
+    } catch (invErr: any) {
+      logger.error(`Automatic invoice generation failed for order ${order.orderNumber}: ${invErr.message}`);
+    }
+
     logger.info(`Payment verified and captured successfully for order ${order.orderNumber}`);
 
     return { payment, order, isDuplicate: false };
@@ -286,6 +294,13 @@ export class PaymentService {
               await CommissionService.calculateAndRecordCommission(payment.parentOrderId);
             } catch (commErr: any) {
               logger.error(`Commission recording failed for order ${payment.parentOrderId}: ${commErr.message}`);
+            }
+
+            // Trigger Phase 10A: Automatic Invoice Generation
+            try {
+              await InvoiceService.generateInvoiceForOrder(payment.parentOrderId, { type: 'customer_parent' });
+            } catch (invErr: any) {
+              logger.error(`Automatic invoice generation failed for order ${payment.parentOrderId}: ${invErr.message}`);
             }
           } else if (eventType === 'payment.failed') {
             payment.status = 'failed';

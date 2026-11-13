@@ -561,3 +561,242 @@ export interface UpdateCouponPayload {
   applicableVendors?: string[];
   isActive?: boolean;
 }
+
+// -------------------------------------------------------------
+// Phase 10A: Invoice Models and Types
+// -------------------------------------------------------------
+export type InvoiceType = 'customer_parent' | 'vendor_order';
+
+export interface DeliveryAddressSnapshot {
+  fullName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
+export interface IssuerDetailsSnapshot {
+  name: string;
+  address: string;
+  taxId?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface CustomerDetailsSnapshot {
+  name: string;
+  email: string;
+  phone?: string;
+}
+
+export interface InvoiceItemSnapshot {
+  productId: string;
+  vendorId?: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  itemSubtotal: number;
+  taxRate?: number;
+  taxAmount?: number;
+  discountAmount?: number;
+}
+
+export interface TaxBreakdown {
+  totalTax: number;
+  cgst?: number;
+  sgst?: number;
+  igst?: number;
+  rate?: number;
+  notes?: string;
+}
+
+export interface Invoice {
+  _id: string;
+  invoiceNumber: string;
+  parentOrderId: string;
+  vendorOrderId?: string;
+  customerId: string;
+  vendorId?: string;
+  invoiceType: InvoiceType;
+  issuerDetails: IssuerDetailsSnapshot;
+  customerDetails: CustomerDetailsSnapshot;
+  billingAddress: DeliveryAddressSnapshot;
+  shippingAddress: DeliveryAddressSnapshot;
+  items: InvoiceItemSnapshot[];
+  subtotal: number;
+  discountAmount: number;
+  shippingAmount: number;
+  taxBreakdown: TaxBreakdown;
+  totalAmount: number;
+  currency: string;
+  paymentStatus: string;
+  invoiceDate: string;
+  pdfStorageKey: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// -------------------------------------------------------------
+// Phase 10B: Analytics & Business Intelligence Types
+// -------------------------------------------------------------
+export interface AnalyticsOverview {
+  totalCustomers: number;
+  totalVendors: number;
+  totalActiveProducts: number;
+  totalParentOrders: number;
+  totalVendorOrders: number;
+  totalRevenue: number;
+  totalCommissionEarned: number;
+  pendingPayoutAmount: number;
+  completedPayoutAmount: number;
+  timestamp: string;
+}
+
+export interface RevenueAnalytics {
+  totalRevenue: number;
+  successfulOrdersCount: number;
+  averageOrderValue: number;
+  period: {
+    startDate: string;
+    endDate: string;
+    groupBy: string;
+  };
+  previousPeriod: {
+    revenue: number;
+    successfulOrdersCount: number;
+    revenueGrowthPercentage: number;
+    orderGrowthPercentage: number;
+  };
+  timeline: Array<{
+    date: string;
+    revenue: number;
+    ordersCount: number;
+  }>;
+}
+
+export interface OrderAnalytics {
+  totalOrders: number;
+  pending: number;
+  confirmed: number;
+  processing: number;
+  shipped: number;
+  delivered: number;
+  cancelled: number;
+  statusDistribution: Array<{
+    status: string;
+    count: number;
+    percentage: number;
+  }>;
+  vendorOrdersSummary: {
+    totalVendorOrders: number;
+    vendorStatusDistribution: Array<{
+      status: string;
+      count: number;
+    }>;
+  };
+}
+
+export interface VendorAnalytics {
+  vendors: Array<{
+    vendorId: string;
+    storeName: string;
+    businessEmail: string;
+    totalSales: number;
+    totalOrders: number;
+    platformCommission: number;
+    netEarnings: number;
+    availableBalance: number;
+    paidOutAmount: number;
+  }>;
+  topVendors: Array<{
+    vendorId: string;
+    storeName: string;
+    totalSales: number;
+    totalOrders: number;
+  }>;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface ProductAnalytics {
+  bestSellingProducts: Array<{
+    productId: string;
+    productName: string;
+    sku: string;
+    price: number;
+    vendorId: string;
+    unitsSold: number;
+    totalRevenue: number;
+    averageRating: number;
+    stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
+    currentStock: number;
+  }>;
+  lowStockProducts: Array<{
+    productId: string;
+    productName: string;
+    sku: string;
+    stock: number;
+    price: number;
+  }>;
+  outOfStockProducts: Array<{
+    productId: string;
+    productName: string;
+    sku: string;
+    price: number;
+  }>;
+  categorySales: Array<{
+    categoryId: string;
+    categoryName: string;
+    unitsSold: number;
+    totalRevenue: number;
+  }>;
+}
+
+export interface CommissionAnalytics {
+  totalCommission: number;
+  allTimeCommission: number;
+  effectiveCommissionRate: number;
+  commissionByPeriod: Array<{
+    date: string;
+    commissionAmount: number;
+  }>;
+  commissionByVendor: Array<{
+    vendorId: string;
+    storeName: string;
+    totalCommission: number;
+  }>;
+}
+
+export interface PayoutAnalytics {
+  availableVendorBalances: number;
+  pendingBalances: number;
+  pendingPayouts: {
+    count: number;
+    amount: number;
+  };
+  paidPayouts: {
+    count: number;
+    amount: number;
+  };
+  failedPayouts: {
+    count: number;
+    amount: number;
+  };
+  recentPayouts: Array<{
+    id: string;
+    payoutNumber: string;
+    vendorId: string;
+    storeName: string;
+    amount: number;
+    status: string;
+    destination: string;
+    createdAt: string;
+  }>;
+}

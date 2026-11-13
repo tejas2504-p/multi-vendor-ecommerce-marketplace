@@ -12,6 +12,9 @@ import { addressRoutes } from '../address.routes';
 import { checkoutRoutes } from '../checkout.routes';
 import { orderRoutes } from '../order.routes';
 import { paymentRoutes } from '../payment.routes';
+import { reviewRoutes } from '../review.routes';
+import { couponRoutes } from '../coupon.routes';
+import { invoiceRoutes } from '../invoice.routes';
 
 const router = Router();
 
@@ -28,5 +31,8 @@ router.use('/addresses', addressRoutes);
 router.use('/checkout', checkoutRoutes);
 router.use('/orders', orderRoutes);
 router.use('/payments', paymentRoutes);
+router.use('/reviews', reviewRoutes);
+router.use('/coupons', couponRoutes);
+router.use('/invoices', invoiceRoutes);
 
 export const v1Router = router;

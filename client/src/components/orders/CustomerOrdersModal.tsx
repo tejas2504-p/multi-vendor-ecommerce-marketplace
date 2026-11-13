@@ -10,10 +10,12 @@ import {
   Layers,
   CreditCard,
   CheckCircle2,
+  FileText,
 } from 'lucide-react';
 import { Order, VendorOrder } from '../../types';
 import { orderApi } from '../../services/order.api';
 import { paymentApi } from '../../services/payment.api';
+import { invoiceApi } from '../../services/invoice.api';
 import { loadRazorpayScript } from '../../utils/loadRazorpay';
 
 interface CustomerOrdersModalProps {
@@ -28,6 +30,8 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
+  const [downloadingOrderId, setDownloadingOrderId] = useState<string | null>(null);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +131,19 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
     } catch (err: any) {
       setPaymentError(err?.response?.data?.error?.message || err.message || 'Payment initiation failed');
       setIsProcessingPayment(false);
+    }
+  };
+
+  const handleDownloadInvoice = async (orderId: string, orderNumber: string) => {
+    try {
+      setDownloadingOrderId(orderId);
+      setInvoiceError(null);
+      const invoice = await invoiceApi.getOrderInvoice(orderId);
+      await invoiceApi.downloadInvoicePdf(invoice._id, `Invoice-${orderNumber}.pdf`);
+    } catch (err: any) {
+      setInvoiceError(err?.response?.data?.error?.message || 'Failed to download invoice document');
+    } finally {
+      setDownloadingOrderId(null);
     }
   };
 
@@ -274,8 +291,34 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
                         )}
                       </button>
                     )}
+
+                    {/* Download Invoice Action */}
+                    <button
+                      onClick={() => handleDownloadInvoice(selectedOrder.id, selectedOrder.orderNumber)}
+                      disabled={downloadingOrderId === selectedOrder.id}
+                      className="mt-2.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-sm flex items-center space-x-1.5 transition disabled:opacity-50"
+                    >
+                      {downloadingOrderId === selectedOrder.id ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Preparing PDF...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Download Tax Invoice</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
+
+                {invoiceError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{invoiceError}</span>
+                  </div>
+                )}
 
                 {paymentError && (
                   <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center space-x-2">

@@ -28,6 +28,7 @@ import { OrderController } from '../controllers/order.controller';
 import { CommissionController } from '../controllers/commission.controller';
 import { ReviewController } from '../controllers/review.controller';
 import { CouponController } from '../controllers/coupon.controller';
+import { AnalyticsController } from '../controllers/analytics.controller';
 import { ApiResponse } from '../utils/apiResponse';
 
 const router = Router();
@@ -354,6 +355,89 @@ router.delete(
   authorize('admin'),
   validateParams(couponParamSchema),
   CouponController.deleteCoupon
+);
+
+/**
+ * -------------------------------------------------------------------
+ * Phase 10B – Admin Analytics & Business Intelligence
+ * -------------------------------------------------------------------
+ */
+
+/**
+ * GET /api/admin/analytics/overview
+ * Executive high-level platform KPI summary
+ */
+router.get(
+  '/analytics/overview',
+  authenticate,
+  authorize('admin'),
+  AnalyticsController.getOverview
+);
+
+/**
+ * GET /api/admin/analytics/revenue
+ * Time-series revenue, successful transactions, AOV, and growth comparison
+ */
+router.get(
+  '/analytics/revenue',
+  authenticate,
+  authorize('admin'),
+  AnalyticsController.getRevenue
+);
+
+/**
+ * GET /api/admin/analytics/orders
+ * Order status distribution and multi-vendor shipment analytics
+ */
+router.get(
+  '/analytics/orders',
+  authenticate,
+  authorize('admin'),
+  AnalyticsController.getOrders
+);
+
+/**
+ * GET /api/admin/analytics/vendors
+ * Vendor sales, order volume, commission, and merchant rankings
+ */
+router.get(
+  '/analytics/vendors',
+  authenticate,
+  authorize('admin'),
+  AnalyticsController.getVendors
+);
+
+/**
+ * GET /api/admin/analytics/products
+ * Best-selling catalog items, inventory alerts, and category performance
+ */
+router.get(
+  '/analytics/products',
+  authenticate,
+  authorize('admin'),
+  AnalyticsController.getProducts
+);
+
+/**
+ * GET /api/admin/analytics/commissions
+ * Platform commission earnings, trends, and merchant contributions
+ */
+router.get(
+  '/analytics/commissions',
+  authenticate,
+  authorize('admin'),
+  AnalyticsController.getCommissions
+);
+
+/**
+ * GET /api/admin/analytics/payouts
+ * Treasury balance, pending disbursements, and payout reconciliation
+ */
+router.get(
+  '/analytics/payouts',
+  authenticate,
+  authorize('admin'),
+  AnalyticsController.getPayouts
 );
 
 export const adminRoutes = router;

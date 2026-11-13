@@ -27,7 +27,9 @@
     "test:commission": "tsx src/tests/runCommissionPayoutTests.ts",
     "test:reviews": "tsx src/tests/runReviewTests.ts",
     "test:coupons": "tsx src/tests/runCouponTests.ts",
-    "test": "tsx src/tests/runAuthTests.ts && tsx src/tests/runRbacTests.ts && tsx src/tests/runVendorOnboardingTests.ts && tsx src/tests/runAdminVendorApprovalTests.ts && tsx src/tests/runProductTests.ts && tsx src/tests/runImageUploadTests.ts && tsx src/tests/runElasticsearchTests.ts && tsx src/tests/runProductSearchTests.ts && tsx src/tests/runCartTests.ts && tsx src/tests/runCheckoutTests.ts && tsx src/tests/runMultiVendorOrderTests.ts && tsx src/tests/runPaymentTests.ts && tsx src/tests/runCommissionPayoutTests.ts && tsx src/tests/runReviewTests.ts"
+    "test:invoices": "tsx src/tests/runInvoiceTests.ts",
+    "test:analytics": "tsx src/tests/runAnalyticsTests.ts",
+    "test": "tsx src/tests/runAuthTests.ts && tsx src/tests/runRbacTests.ts && tsx src/tests/runVendorOnboardingTests.ts && tsx src/tests/runAdminVendorApprovalTests.ts && tsx src/tests/runProductTests.ts && tsx src/tests/runImageUploadTests.ts && tsx src/tests/runElasticsearchTests.ts && tsx src/tests/runProductSearchTests.ts && tsx src/tests/runCartTests.ts && tsx src/tests/runCheckoutTests.ts && tsx src/tests/runMultiVendorOrderTests.ts && tsx src/tests/runPaymentTests.ts && tsx src/tests/runCommissionPayoutTests.ts && tsx src/tests/runReviewTests.ts && tsx src/tests/runCouponTests.ts && tsx src/tests/runInvoiceTests.ts && tsx src/tests/runAnalyticsTests.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.540.0",
@@ -48,6 +50,7 @@
     "mongoose": "^8.3.1",
     "morgan": "^1.10.0",
     "multer": "^2.5.0",
+    "pdfkit": "^0.20.2",
     "rate-limit-redis": "^4.2.0",
     "razorpay": "^2.9.8",
     "stripe": "^15.1.0",
@@ -63,6 +66,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.12.7",
+    "@types/pdfkit": "^0.17.7",
     "@types/supertest": "^7.2.1",
     "mongodb-memory-server": "^11.3.0",
     "rimraf": "^5.0.5",

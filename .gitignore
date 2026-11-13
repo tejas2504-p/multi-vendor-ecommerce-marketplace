@@ -46,4 +46,6 @@ es_data/
 tmp/
 temp/
 *.tsbuildinfo
+uploads/
+server/uploads/
 

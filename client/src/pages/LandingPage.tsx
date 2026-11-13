@@ -24,6 +24,7 @@ import { AdminOrdersManager } from '../components/admin/AdminOrdersManager';
 import { AdminPayoutsManager } from '../components/admin/AdminPayoutsManager';
 import { AdminReviewsModerator } from '../components/admin/AdminReviewsModerator';
 import { AdminCouponsManager } from '../components/admin/AdminCouponsManager';
+import { AdminAnalyticsDashboard } from '../components/admin/AdminAnalyticsDashboard';
 
 export const LandingPage: React.FC = () => {
   const { activeRole, setActiveRole } = useApp();
@@ -209,9 +210,14 @@ export const LandingPage: React.FC = () => {
         </section>
       )}
 
-      {/* Phase 7B: Admin Multi-Vendor Governance Panel */}
+      {/* Phase 7B - Phase 10B: Admin Multi-Vendor Governance & Business Intelligence Panel */}
       {activeRole === 'admin' && (
         <section className="space-y-6">
+          {/* Phase 10B: Admin Analytics & Business Intelligence Dashboard */}
+          <div className="space-y-3">
+            <AdminAnalyticsDashboard />
+          </div>
+
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
