@@ -2,6 +2,7 @@ import { createApp } from './app';
 import { env } from './config/env.config';
 import { connectDatabase, disconnectDatabase } from './config/db.config';
 import { connectRedis, disconnectRedis } from './config/redis.config';
+import { ProductIndexingService } from './services/productIndexing.service';
 import { logger } from './utils/logger';
 
 const startServer = async () => {
@@ -10,6 +11,11 @@ const startServer = async () => {
   // Connect to MongoDB and Redis cache before accepting traffic
   await connectDatabase();
   await connectRedis();
+
+  // Ensure Elasticsearch index mappings are initialized
+  await ProductIndexingService.ensureIndexExists().catch((err) => {
+    logger.warn(`Elasticsearch index auto-initialization warning: ${err.message}`);
+  });
 
   const server = app.listen(env.PORT, () => {
     logger.info(`🚀 Marketplace Server running in [${env.NODE_ENV}] mode on port ${env.PORT}`);

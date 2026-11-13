@@ -78,16 +78,27 @@ export class ProductIndexingService {
           type: 'keyword',
           fields: {
             text: { type: 'text', analyzer: 'product_search_analyzer' },
+            keyword: { type: 'keyword', ignore_above: 256 },
           },
         },
-        categoryId: { type: 'keyword' },
+        categoryId: {
+          type: 'keyword',
+          fields: {
+            keyword: { type: 'keyword', ignore_above: 256 },
+          },
+        },
         categoryName: {
           type: 'text',
           fields: {
             keyword: { type: 'keyword', ignore_above: 256 },
           },
         },
-        vendorId: { type: 'keyword' },
+        vendorId: {
+          type: 'keyword',
+          fields: {
+            keyword: { type: 'keyword', ignore_above: 256 },
+          },
+        },
         price: { type: 'double' },
         stock: { type: 'integer' },
         rating: { type: 'double' },
@@ -128,6 +139,23 @@ export class ProductIndexingService {
     } catch (error: any) {
       logger.error(`❌ Failed to initialize Elasticsearch index '${ELASTICSEARCH_INDEX}': ${error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * Ensures the index exists with proper schema, auto-initializing if missing.
+   */
+  static async ensureIndexExists(): Promise<boolean> {
+    const client = getElasticsearchClient();
+    try {
+      const exists = await client.indices.exists({ index: ELASTICSEARCH_INDEX });
+      if (!exists) {
+        return await this.initProductIndex(false);
+      }
+      return true;
+    } catch (err: any) {
+      logger.warn(`Index existence check failed: ${err.message}`);
+      return false;
     }
   }
 
@@ -193,6 +221,7 @@ export class ProductIndexingService {
     }
 
     const client = getElasticsearchClient();
+    await this.ensureIndexExists().catch(() => {});
     const doc = this.toSearchDocument(product);
 
     await client.index({

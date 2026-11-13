@@ -29,6 +29,7 @@
     "test:coupons": "npm run test:coupons --workspace=server",
     "test:invoices": "npm run test:invoices --workspace=server",
     "test:analytics": "npm run test:analytics --workspace=server",
+    "test:e2e": "npm run test:e2e --workspace=server",
     "test": "npm run test --workspace=server",
     "build:server": "npm run build --workspace=server",
     "build:client": "npm run build --workspace=client",

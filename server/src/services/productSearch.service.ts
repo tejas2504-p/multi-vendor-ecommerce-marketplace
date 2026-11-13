@@ -197,7 +197,7 @@ export class ProductSearchService {
     const aggs = {
       categories: {
         terms: {
-          field: 'categoryId',
+          field: 'categoryId.keyword',
           size: 50,
         },
         aggs: {
@@ -211,7 +211,7 @@ export class ProductSearchService {
       },
       brands: {
         terms: {
-          field: 'brand',
+          field: 'brand.keyword',
           size: 50,
         },
       },
