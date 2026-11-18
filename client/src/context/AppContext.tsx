@@ -87,7 +87,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeRole,
         setActiveRole,
         appName: 'NexusMarket',
-        phase: 'Phase 5B: Advanced Search & Indexing',
+        phase: 'Production v1.0',
         user,
         isAuthenticated: Boolean(user),
         isLoadingAuth,

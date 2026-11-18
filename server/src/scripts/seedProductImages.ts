@@ -62,6 +62,8 @@ async function updateProductImages() {
       imageKey = '/images/products/alpha-studio-monitor-pro.jpg';
     }
 
+    if (!hit._id) continue;
+
     await esClient.update({
       index: ELASTICSEARCH_INDEX,
       id: hit._id,

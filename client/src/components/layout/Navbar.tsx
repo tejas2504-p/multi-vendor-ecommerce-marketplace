@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, Store, ShieldCheck, Activity, LogIn, LogOut, ShoppingCart, MapPin, Package } from 'lucide-react';
+import { ShoppingBag, Store, ShieldCheck, LogIn, LogOut, ShoppingCart, MapPin, Package } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useCart } from '../../context/CartContext';
 
@@ -17,65 +17,59 @@ export const Navbar: React.FC<NavbarProps> = ({ activeRole, onRoleChange }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo / Brand */}
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+          <div 
+            onClick={() => onRoleChange('customer')}
+            className="flex items-center space-x-3 cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
-              <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 NexusMarket
-              </span>
-              <span className="hidden sm:inline-block ml-2 px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                Phase 7B
               </span>
             </div>
           </div>
 
-          {/* Role Mode Selector */}
+          {/* Role Navigation: Marketplace / Merchant Portal / Admin Console */}
           <div className="hidden md:flex items-center bg-gray-100 p-1 rounded-xl text-xs sm:text-sm font-medium">
             <button
               onClick={() => onRoleChange('customer')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+              className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
                 activeRole === 'customer'
-                  ? 'bg-white text-gray-900 shadow-sm font-semibold'
+                  ? 'bg-white text-gray-900 shadow-xs font-semibold'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <ShoppingBag className="w-4 h-4 text-indigo-600" />
-              <span>Customer</span>
+              <ShoppingBag className="w-4 h-4 text-emerald-600" />
+              <span>Marketplace</span>
             </button>
             <button
               onClick={() => onRoleChange('vendor')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+              className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
                 activeRole === 'vendor'
-                  ? 'bg-white text-gray-900 shadow-sm font-semibold'
+                  ? 'bg-white text-gray-900 shadow-xs font-semibold'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <Store className="w-4 h-4 text-emerald-600" />
-              <span>Vendor</span>
+              <span>Merchant Portal</span>
             </button>
             <button
               onClick={() => onRoleChange('admin')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+              className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
                 activeRole === 'admin'
-                  ? 'bg-white text-gray-900 shadow-sm font-semibold'
+                  ? 'bg-white text-gray-900 shadow-xs font-semibold'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-purple-600" />
-              <span>Admin</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Admin Console</span>
             </button>
           </div>
 
-          {/* Right Header: Auth Actions & Health */}
-          <div className="flex items-center space-x-2.5">
-            {/* Backend Status indicator */}
-            <div className="hidden lg:flex items-center space-x-1.5 text-xs font-medium text-slate-500 pr-2 border-r border-slate-200">
-              <Activity className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-              <span>API Active</span>
-            </div>
-
+          {/* Right Header: Cart, Orders, Addresses & Auth Actions */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Shopping Cart Button with Dynamic Badge */}
             <button
               onClick={openCart}
@@ -84,19 +78,19 @@ export const Navbar: React.FC<NavbarProps> = ({ activeRole, onRoleChange }) => {
             >
               <ShoppingCart className="w-5 h-5" />
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-600 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-sm">
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-600 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
                   {itemCount > 99 ? '99+' : itemCount}
                 </span>
               )}
             </button>
 
-            {/* Saved Addresses Button (When Authenticated) */}
+            {/* Saved Addresses & Orders (When Authenticated) */}
             {isAuthenticated && (
               <>
                 <button
                   onClick={openOrdersModal}
                   title="My Orders & Shipments"
-                  className="hidden sm:flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-600 hover:bg-slate-100 rounded-xl transition border border-slate-200"
+                  className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-600 hover:bg-slate-100 rounded-xl transition border border-slate-200"
                 >
                   <Package className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Orders</span>
@@ -104,7 +98,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeRole, onRoleChange }) => {
                 <button
                   onClick={openAddressModal}
                   title="Manage Addresses"
-                  className="hidden sm:flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-600 hover:bg-slate-100 rounded-xl transition border border-slate-200"
+                  className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-600 hover:bg-slate-100 rounded-xl transition border border-slate-200"
                 >
                   <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Addresses</span>
@@ -146,13 +140,44 @@ export const Navbar: React.FC<NavbarProps> = ({ activeRole, onRoleChange }) => {
 
                 <button
                   onClick={() => openAuthModal('register')}
-                  className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-sm transition"
+                  className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-xs transition"
                 >
                   Register
                 </button>
               </div>
             )}
           </div>
+        </div>
+
+        {/* Mobile View Role Switcher Bar */}
+        <div className="md:hidden flex items-center justify-around py-2 border-t border-slate-100 text-xs font-medium">
+          <button
+            onClick={() => onRoleChange('customer')}
+            className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg ${
+              activeRole === 'customer' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600'
+            }`}
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>Marketplace</span>
+          </button>
+          <button
+            onClick={() => onRoleChange('vendor')}
+            className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg ${
+              activeRole === 'vendor' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600'
+            }`}
+          >
+            <Store className="w-3.5 h-3.5" />
+            <span>Merchant</span>
+          </button>
+          <button
+            onClick={() => onRoleChange('admin')}
+            className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg ${
+              activeRole === 'admin' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Admin</span>
+          </button>
         </div>
       </div>
     </header>
