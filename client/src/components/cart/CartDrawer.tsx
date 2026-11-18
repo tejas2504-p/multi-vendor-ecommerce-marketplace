@@ -65,7 +65,7 @@ export const CartDrawer: React.FC = () => {
               </div>
               <button
                 onClick={closeCart}
-                className="mt-2 px-5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition"
+                className="mt-2 px-5 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition shadow-sm"
               >
                 Start Shopping
               </button>
@@ -166,13 +166,13 @@ export const CartDrawer: React.FC = () => {
               )}
               <div className="flex items-center justify-between text-sm font-black text-slate-900 pt-2 border-t border-slate-200">
                 <span>Estimated Total</span>
-                <span className="text-base text-indigo-600">${total.toFixed(2)}</span>
+                <span className="text-base text-emerald-700">${total.toFixed(2)}</span>
               </div>
             </div>
 
             <button
               onClick={handleCheckoutClick}
-              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-indigo-500/25 flex items-center justify-center space-x-2 transition"
+              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 transition"
             >
               <span>Proceed to Checkout</span>
               <ArrowRight className="w-4 h-4" />

@@ -403,7 +403,7 @@ export const VendorPortalTestingPanel: React.FC = () => {
             <button
               onClick={handleLoadDashboard}
               disabled={dashboardLoading}
-              className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2"
+              className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 shadow-xs"
             >
               {dashboardLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

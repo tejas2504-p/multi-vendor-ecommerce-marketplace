@@ -6,7 +6,6 @@ import {
   Server, 
   Database, 
   Activity, 
-  Construction, 
   RefreshCw,
   Layers,
   ArrowRight
@@ -32,59 +31,193 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      {/* Development In-Progress Alert Banner */}
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3.5">
-          <div className="p-2.5 bg-amber-500/20 text-amber-700 rounded-xl shrink-0">
-            <Construction className="w-5 h-5 animate-bounce" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="font-bold text-amber-900 text-sm sm:text-base">
-                Marketplace Platform Under Active Development
-              </span>
-              <Badge variant="amber">Phase 1B Foundation</Badge>
+      {/* Designed Modern Hero Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-200/90 shadow-sm p-6 sm:p-10 lg:p-12">
+        {/* Soft Decorative Ambient Background Glows */}
+        <div className="absolute -right-20 -top-20 w-96 h-96 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute right-1/4 -bottom-20 w-80 h-80 bg-teal-50/60 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+          {/* Left Column: Headings, Descriptions & Tech Badges */}
+          <div className="lg:col-span-7 space-y-5">
+            {/* Live Status Pill */}
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/70 text-xs font-semibold shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Multi-Vendor Architecture Initialized</span>
             </div>
-            <p className="text-xs sm:text-sm text-amber-800/80 mt-0.5">
-              The core monorepo, Express REST API, React SPA, and database architecture are operational. Business features will roll out in upcoming phases.
+
+            {/* Main Title */}
+            <div className="space-y-1">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 leading-[1.12]">
+                Amazon-Style Multi-Vendor
+              </h1>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-emerald-700 leading-[1.12]">
+                E-Commerce Marketplace
+              </h2>
+            </div>
+
+            {/* Description */}
+            <p className="text-slate-600 text-sm sm:text-base leading-relaxed max-w-xl font-normal">
+              Engineered from scratch using a production monorepo layout. Built with TypeScript end-to-end,
+              Express.js RESTful API, MongoDB document store, and decoupled modular portals for Customers, Sellers, and Platform Admins.
             </p>
+
+            {/* 8 Tech Stack Badges */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {/* React 18 */}
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-xs transition">
+                <svg className="w-4 h-4 text-sky-500 shrink-0" viewBox="-11.5 -10.23 23 20.46">
+                  <circle cx="0" cy="0" r="2.05" fill="#0ea5e9"/>
+                  <g stroke="#0ea5e9" strokeWidth="1" fill="none">
+                    <ellipse rx="11" ry="4.2"/>
+                    <ellipse rx="11" ry="4.2" transform="rotate(60)"/>
+                    <ellipse rx="11" ry="4.2" transform="rotate(120)"/>
+                  </g>
+                </svg>
+                <span>React 18</span>
+              </div>
+
+              {/* TypeScript */}
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-xs transition">
+                <span className="w-4 h-4 rounded bg-[#3178c6] text-white flex items-center justify-center text-[9px] font-black leading-none shrink-0">
+                  TS
+                </span>
+                <span>TypeScript</span>
+              </div>
+
+              {/* Node.js */}
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-xs transition">
+                <svg className="w-4 h-4 text-emerald-600 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2l9 5.2v10.4l-9 5.2-9-5.2V7.2L12 2zm0 2.3L4.8 8.5v7l7.2 4.2 7.2-4.2v-7L12 4.3z"/>
+                </svg>
+                <span>Node.js</span>
+              </div>
+
+              {/* MongoDB */}
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-xs transition">
+                <svg className="w-4 h-4 text-emerald-700 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 1.5s-6 5.5-6 11.5c0 4.5 3 8 6 9.5 3-1.5 6-5 6-9.5 0-6-6-11.5-6-11.5zm.3 17.5v-7.8c.8 0 1.5.7 1.5 1.5 0 2.2-1.5 6.3-1.5 6.3z"/>
+                </svg>
+                <span>MongoDB</span>
+              </div>
+
+              {/* Tailwind CSS */}
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-xs transition">
+                <svg className="w-4 h-4 text-sky-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.001,4.8c-3.2,0-5.2,1.6-6,4.8c1.2-1.6,2.6-2.2,4.2-1.8c0.913,0.228,1.565,0.89,2.288,1.624 C13.666,10.618,15.027,12,18.001,12c3.2,0,5.2-1.6,6-4.8c-1.2,1.6-2.6,2.2-4.2,1.8c-0.913-0.228-1.565-0.89-2.288-1.624 C16.337,6.182,14.976,4.8,12.001,4.8z M6.001,12c-3.2,0-5.2,1.6-6,4.8c1.2-1.6,2.6-2.2,4.2-1.8c0.913,0.228,1.565,0.89,2.288,1.624 c1.177,1.194,2.538,2.576,5.512,2.576c3.2,0,5.2-1.6,6-4.8c-1.2,1.6-2.6,2.2-4.2,1.8c-0.913-0.228-1.565-0.89-2.288-1.624 C10.337,13.382,8.976,12,6.001,12z"/>
+                </svg>
+                <span>Tailwind CSS</span>
+              </div>
+
+              {/* Redis */}
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-xs transition">
+                <svg className="w-4 h-4 text-rose-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M2.5 7.5L12 2l9.5 5.5v9L12 22l-9.5-5.5v-9zm9.5 7.2l7-4-7-4-7 4 7 4z"/>
+                </svg>
+                <span>Redis</span>
+              </div>
+
+              {/* Elasticsearch */}
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-xs transition">
+                <svg className="w-4 h-4 text-amber-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+                <span>Elasticsearch</span>
+              </div>
+
+              {/* AWS S3 */}
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-xs transition">
+                <svg className="w-4 h-4 text-amber-600 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/>
+                </svg>
+                <span>AWS S3</span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="hidden lg:block text-right shrink-0">
-          <span className="text-xs font-semibold text-amber-800">Version 1.0.0</span>
-        </div>
-      </div>
 
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-8 sm:p-12 shadow-2xl border border-slate-800">
-        <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-96 h-96 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="max-w-3xl space-y-5 relative z-10">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 bg-white/10 backdrop-blur rounded-full text-xs font-medium text-indigo-200 border border-white/10">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Multi-Vendor Architecture Initialized</span>
-          </div>
+          {/* Right Column: Code-Designed Laptop Mockup */}
+          <div className="lg:col-span-5 flex items-center justify-center">
+            <div className="w-full max-w-sm lg:max-w-md">
+              {/* Laptop Screen Frame */}
+              <div className="bg-slate-900 rounded-t-2xl p-2.5 sm:p-3 shadow-2xl border border-slate-700/80">
+                {/* Camera dot */}
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mx-auto mb-2" />
+                
+                {/* Inner Screen Viewport */}
+                <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-inner p-3 space-y-2.5">
+                  {/* Miniature Navbar */}
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                    <div className="flex items-center space-x-1.5">
+                      <div className="w-4 h-4 rounded bg-emerald-600 flex items-center justify-center text-white text-[9px] font-black">
+                        N
+                      </div>
+                      <span className="text-[11px] font-extrabold text-slate-900 tracking-tight">NexusMarket</span>
+                    </div>
+                    <div className="w-28 sm:w-36 h-4 bg-white border border-slate-200 rounded text-[8px] text-slate-400 flex items-center px-2 shadow-xs">
+                      Search products...
+                    </div>
+                    <div className="flex items-center space-x-1.5 text-slate-400">
+                      <div className="w-3.5 h-3.5 rounded-full bg-slate-200" />
+                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-100 flex items-center justify-center text-[8px] font-bold text-emerald-700">
+                        ✓
+                      </div>
+                    </div>
+                  </div>
 
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-            Amazon-Style Multi-Vendor <br />
-            <span className="bg-gradient-to-r from-indigo-400 via-sky-300 to-emerald-300 bg-clip-text text-transparent">
-              E-Commerce Marketplace
-            </span>
-          </h1>
+                  {/* Inner Banner Hero Card */}
+                  <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white rounded-lg p-2.5 flex items-center justify-between border border-emerald-100 shadow-xs">
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-black text-slate-900 block leading-tight">
+                        Discover Top Products
+                      </span>
+                      <span className="text-[8.5px] text-slate-500 block">
+                        From multiple trusted sellers
+                      </span>
+                      <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-emerald-700 text-white text-[8px] font-bold mt-1 shadow-xs">
+                        <span>Shop Now</span>
+                        <span>→</span>
+                      </div>
+                    </div>
+                    <div className="w-14 h-14 rounded-lg bg-white p-1 shadow-xs border border-slate-100 flex items-center justify-center shrink-0">
+                      <img
+                        src="/images/products/alpha-studio-monitor-pro.jpg"
+                        alt="Product preview"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  </div>
 
-          <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">
-            Engineered from scratch using a production monorepo layout. Built with TypeScript end-to-end,
-            Express.js RESTful API, MongoDB document store, and decoupled modular portals for Customers, Sellers, and Platform Admins.
-          </p>
+                  {/* Category Pills Row */}
+                  <div className="space-y-1 pt-0.5">
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Shop by Category</span>
+                    <div className="grid grid-cols-6 gap-1 text-center">
+                      {[
+                        { name: 'Electronics', color: 'bg-indigo-50 text-indigo-700' },
+                        { name: 'Audio', color: 'bg-emerald-50 text-emerald-700' },
+                        { name: 'Wearables', color: 'bg-amber-50 text-amber-700' },
+                        { name: 'Mobile', color: 'bg-sky-50 text-sky-700' },
+                        { name: 'Gaming', color: 'bg-rose-50 text-rose-700' },
+                        { name: 'More', color: 'bg-slate-100 text-slate-700' },
+                      ].map((cat, i) => (
+                        <div key={i} className="flex flex-col items-center space-y-0.5">
+                          <div className={`w-6 h-6 rounded-md ${cat.color} flex items-center justify-center text-[10px] font-bold shadow-xs border border-slate-200/50`}>
+                            {cat.name.charAt(0)}
+                          </div>
+                          <span className="text-[7.5px] font-semibold text-slate-600 truncate max-w-full">{cat.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-          <div className="flex flex-wrap gap-2 pt-2">
-            {['React 18', 'TypeScript', 'Node.js Express', 'MongoDB', 'Tailwind CSS', 'Redis', 'Elasticsearch', 'AWS S3'].map((tech) => (
-              <span
-                key={tech}
-                className="px-2.5 py-1 text-xs font-medium bg-slate-800/80 text-slate-300 rounded-lg border border-slate-700/60"
-              >
-                {tech}
-              </span>
-            ))}
+              {/* Laptop Keyboard Base & Trackpad Notch */}
+              <div className="relative mx-auto -mt-0.5 bg-gradient-to-b from-slate-200 via-slate-300 to-slate-400 h-2.5 sm:h-3 rounded-b-xl shadow-lg border-t border-slate-200">
+                <div className="w-16 h-1 bg-slate-400/80 rounded-b mx-auto" />
+              </div>
+              <div className="w-4/5 h-2.5 bg-slate-900/15 blur-sm rounded-full mx-auto mt-1" />
+            </div>
           </div>
         </div>
       </div>

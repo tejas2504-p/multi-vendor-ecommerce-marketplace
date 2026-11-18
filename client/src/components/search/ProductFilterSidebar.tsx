@@ -139,7 +139,7 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
               onClick={() => onFilterChange({ category: undefined, page: 1 })}
               className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${
                 !appliedFilters.category
-                  ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                  ? 'bg-emerald-50 text-emerald-700 font-semibold'
                   : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
@@ -161,7 +161,7 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
                   }
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${
                     isSelected
-                      ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                      ? 'bg-emerald-50 text-emerald-700 font-semibold'
                       : 'text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -191,7 +191,7 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
                 <label
                   key={b.name}
                   className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer select-none transition ${
-                    isSelected ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'
+                    isSelected ? 'bg-emerald-50 text-emerald-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center space-x-2 truncate">
@@ -260,7 +260,7 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
           <div className="flex items-center space-x-2 pt-1">
             <button
               type="submit"
-              className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition"
+              className="flex-1 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold transition shadow-xs"
             >
               Apply
             </button>

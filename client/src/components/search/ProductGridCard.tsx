@@ -79,7 +79,7 @@ export const ProductGridCard: React.FC<ProductGridCardProps> = ({ product, onSel
           {/* Brand & Category row */}
           <div className="flex items-center space-x-2 text-[11px] font-medium">
             {product.brand && (
-              <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md font-semibold">
+              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
                 {product.brand}
               </span>
             )}
@@ -116,7 +116,7 @@ export const ProductGridCard: React.FC<ProductGridCardProps> = ({ product, onSel
             type="button"
             disabled={isOutOfStock || isAdding}
             onClick={handleAddToCart}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-40 disabled:hover:bg-indigo-600"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition shadow-sm disabled:opacity-40 disabled:hover:bg-emerald-500"
           >
             {isAdding ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />

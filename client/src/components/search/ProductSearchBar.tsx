@@ -161,7 +161,7 @@ export const ProductSearchBar: React.FC<ProductSearchBarProps> = ({
 
           <button
             type="submit"
-            className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition"
+            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition"
           >
             Search
           </button>

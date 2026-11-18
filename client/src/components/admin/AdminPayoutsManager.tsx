@@ -297,7 +297,7 @@ export const AdminPayoutsManager: React.FC = () => {
                 <button
                   onClick={handleUpdateDefaultCommission}
                   disabled={isSavingRate}
-                  className="flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded hover:bg-indigo-700"
+                  className="flex items-center gap-1 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded hover:bg-emerald-600 transition shadow-xs"
                 >
                   <Save className="w-3.5 h-3.5" />
                   Save
@@ -369,7 +369,7 @@ export const AdminPayoutsManager: React.FC = () => {
               onClick={() => setStatusFilter(st)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition ${
                 statusFilter === st
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-emerald-500 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -479,7 +479,7 @@ export const AdminPayoutsManager: React.FC = () => {
                                   setProviderRef(`TRF-${Date.now()}`);
                                   setFailureReason('');
                                 }}
-                                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded shadow-sm transition"
+                                className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded shadow-sm transition"
                               >
                                 Process / Settle
                               </button>
@@ -636,7 +636,7 @@ export const AdminPayoutsManager: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isUpdatingStatus}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white font-semibold text-sm rounded-lg shadow-sm transition"
+                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-400 text-white font-semibold text-sm rounded-lg shadow-sm transition"
                 >
                   {isUpdatingStatus ? 'Saving...' : 'Confirm Update'}
                 </button>

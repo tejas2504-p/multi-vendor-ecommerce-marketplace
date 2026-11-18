@@ -258,7 +258,7 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
           ) : eligibility?.eligible ? (
             <button
               onClick={handleOpenCreateForm}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
+              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm transition"
             >
               <Plus className="w-4 h-4" />
               <span>Write a Review</span>
@@ -377,7 +377,7 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
               }}
               className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center space-x-1 transition ${
                 selectedRating === st
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-emerald-500 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -620,7 +620,7 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex items-center space-x-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition disabled:opacity-50"
+                  className="flex items-center space-x-1.5 px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-sm transition disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>

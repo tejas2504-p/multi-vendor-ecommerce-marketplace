@@ -161,7 +161,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   type="button"
                   disabled={isOutOfStock || isAdding}
                   onClick={handleAddToCart}
-                  className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition disabled:opacity-40"
+                  className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm shadow-md transition disabled:opacity-40"
                 >
                   {isAdding ? (
                     <>

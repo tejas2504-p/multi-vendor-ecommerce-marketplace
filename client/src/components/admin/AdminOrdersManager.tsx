@@ -377,7 +377,7 @@ export const AdminOrdersManager: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition disabled:opacity-50"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition disabled:opacity-50"
                 >
                   {isUpdating ? 'Updating...' : 'Save Override'}
                 </button>

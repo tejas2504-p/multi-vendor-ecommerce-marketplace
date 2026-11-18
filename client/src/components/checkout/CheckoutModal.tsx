@@ -346,7 +346,7 @@ export const CheckoutModal: React.FC = () => {
                   onClick={closeCheckout}
                   className={`w-full py-3 rounded-2xl text-xs sm:text-sm font-bold transition ${
                     placedOrder.paymentStatus === 'paid'
-                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25'
+                      ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/25'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}
                 >
@@ -364,7 +364,7 @@ export const CheckoutModal: React.FC = () => {
               </p>
               <button
                 onClick={closeCheckout}
-                className="mt-2 px-5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition"
+                className="mt-2 px-5 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition shadow-sm"
               >
                 Back to Marketplace
               </button>
@@ -376,14 +376,14 @@ export const CheckoutModal: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <MapPin className="w-4 h-4 text-indigo-600" />
+                    <MapPin className="w-4 h-4 text-emerald-600" />
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                       1. Select Delivery Address
                     </h3>
                   </div>
                   <button
                     onClick={openAddressModal}
-                    className="flex items-center space-x-1 text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                    className="flex items-center space-x-1 text-xs font-bold text-emerald-600 hover:text-emerald-700"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Manage / Add</span>
@@ -392,7 +392,7 @@ export const CheckoutModal: React.FC = () => {
 
                 {isLoadingAddresses ? (
                   <div className="py-6 flex items-center justify-center text-slate-400 space-x-2">
-                    <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+                    <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
                     <span className="text-xs">Loading addresses...</span>
                   </div>
                 ) : addresses.length === 0 ? (
@@ -400,7 +400,7 @@ export const CheckoutModal: React.FC = () => {
                     <p className="text-xs text-slate-600">No delivery addresses found on your account.</p>
                     <button
                       onClick={openAddressModal}
-                      className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 transition"
+                      className="px-4 py-2 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition shadow-sm"
                     >
                       + Add Delivery Address
                     </button>
@@ -412,7 +412,7 @@ export const CheckoutModal: React.FC = () => {
                         key={addr.id}
                         className={`cursor-pointer rounded-2xl border p-3.5 transition flex items-start space-x-3 ${
                           selectedAddressId === addr.id
-                            ? 'border-indigo-600 bg-indigo-50/20 shadow-sm'
+                            ? 'border-emerald-600 bg-emerald-50/20 shadow-sm'
                             : 'border-slate-200 hover:border-slate-300 bg-white'
                         }`}
                       >
@@ -421,7 +421,7 @@ export const CheckoutModal: React.FC = () => {
                           name="deliveryAddress"
                           checked={selectedAddressId === addr.id}
                           onChange={() => setSelectedAddressId(addr.id)}
-                          className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                          className="mt-1 text-emerald-600 focus:ring-emerald-500"
                         />
                         <div className="text-xs flex-1">
                           <div className="flex items-center justify-between">
@@ -586,14 +586,14 @@ export const CheckoutModal: React.FC = () => {
                   </div>
                   <div className="flex justify-between text-sm font-black text-slate-900 pt-2 border-t border-slate-200">
                     <span>Final Total</span>
-                    <span className="text-base text-indigo-600">${total.toFixed(2)}</span>
+                    <span className="text-base text-emerald-700">${total.toFixed(2)}</span>
                   </div>
                 </div>
 
                 <button
                   onClick={handlePlaceOrder}
                   disabled={isPlacingOrder || addresses.length === 0}
-                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-indigo-500/25 flex items-center justify-center space-x-2 transition disabled:opacity-50"
+                  className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 transition disabled:opacity-50"
                 >
                   {isPlacingOrder ? (
                     <>

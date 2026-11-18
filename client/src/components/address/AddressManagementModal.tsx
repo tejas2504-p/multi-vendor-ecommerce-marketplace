@@ -194,7 +194,7 @@ export const AddressManagementModal: React.FC = () => {
                 </span>
                 <button
                   onClick={handleOpenAdd}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                  className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-sm"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Address</span>
@@ -203,7 +203,7 @@ export const AddressManagementModal: React.FC = () => {
 
               {isLoading && addresses.length === 0 ? (
                 <div className="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
-                  <Loader2 className="w-7 h-7 animate-spin text-indigo-600" />
+                  <Loader2 className="w-7 h-7 animate-spin text-emerald-600" />
                   <span className="text-xs">Loading addresses...</span>
                 </div>
               ) : addresses.length === 0 ? (
@@ -219,7 +219,7 @@ export const AddressManagementModal: React.FC = () => {
                   </div>
                   <button
                     onClick={handleOpenAdd}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition"
+                    className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition shadow-sm"
                   >
                     Add Address Now
                   </button>
@@ -240,7 +240,7 @@ export const AddressManagementModal: React.FC = () => {
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-bold text-slate-900">{addr.fullName}</span>
                             {addr.isDefault && (
-                              <span className="px-2 py-0.5 text-[10px] font-bold bg-indigo-600 text-white rounded-md uppercase tracking-wider">
+                              <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-600 text-white rounded-md uppercase tracking-wider">
                                 Default
                               </span>
                             )}
@@ -410,7 +410,7 @@ export const AddressManagementModal: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex items-center space-x-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 transition disabled:opacity-50"
+                  className="flex items-center space-x-1.5 px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition disabled:opacity-50"
                 >
                   {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>{formMode === 'add' ? 'Save Address' : 'Update Address'}</span>

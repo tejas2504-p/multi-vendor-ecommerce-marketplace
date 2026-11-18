@@ -173,7 +173,7 @@ export const AdminReviewsModerator: React.FC = () => {
               }}
               className={`px-3 py-1 rounded-full text-xs font-medium transition ${
                 statusFilter === st
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-emerald-500 text-white shadow-sm'
                   : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'
               }`}
             >

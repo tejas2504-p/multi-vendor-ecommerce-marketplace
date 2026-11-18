@@ -444,7 +444,7 @@ export const AdminAnalyticsDashboard: React.FC = () => {
           <button
             type="submit"
             disabled={!customStart || !customEnd}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition disabled:opacity-40"
+            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg transition disabled:opacity-40 shadow-xs"
           >
             Apply Range
           </button>

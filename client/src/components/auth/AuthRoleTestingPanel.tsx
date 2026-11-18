@@ -81,7 +81,7 @@ export const AuthRoleTestingPanel: React.FC = () => {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => openAuthModal('login')}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm transition"
               >
                 Open Sign In / Register
               </button>
@@ -109,14 +109,14 @@ export const AuthRoleTestingPanel: React.FC = () => {
           <div className="flex items-center space-x-2 pt-1">
             <button
               onClick={() => openAuthModal('register')}
-              className="flex-1 py-1.5 bg-white hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 rounded-lg border border-slate-200 text-xs font-semibold transition"
+              className="flex-1 py-1.5 bg-white hover:bg-emerald-50 hover:text-emerald-600 text-slate-700 rounded-lg border border-slate-200 text-xs font-semibold transition"
             >
               Register
             </button>
             <button
               onClick={() => runAccessTest('customer')}
               disabled={Boolean(testingEndpoint)}
-              className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center space-x-1"
+              className="flex-1 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center space-x-1"
             >
               {testingEndpoint === '/api/customer/dashboard' ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -174,7 +174,7 @@ export const AuthRoleTestingPanel: React.FC = () => {
             <button
               onClick={() => runAccessTest('admin')}
               disabled={Boolean(testingEndpoint)}
-              className="w-full py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center space-x-1"
+              className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center space-x-1"
             >
               {testingEndpoint === '/api/admin/dashboard' ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

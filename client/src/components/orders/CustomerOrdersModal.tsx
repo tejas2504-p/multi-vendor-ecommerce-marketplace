@@ -276,7 +276,7 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
                       <button
                         onClick={() => handlePayOrder(selectedOrder)}
                         disabled={isProcessingPayment}
-                        className="mt-2.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center space-x-1.5 transition disabled:opacity-50"
+                        className="mt-2.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center space-x-1.5 transition disabled:opacity-50"
                       >
                         {isProcessingPayment ? (
                           <>
