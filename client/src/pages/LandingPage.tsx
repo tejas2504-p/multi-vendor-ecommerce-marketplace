@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   ShoppingBag, 
   Store, 
@@ -10,12 +10,16 @@ import {
   Lock,
   Zap,
   LogIn,
+  Package,
+  Wallet,
+  LayoutGrid,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ProductSearchExperience } from '../components/search/ProductSearchExperience';
 import { VendorOnboardingSection } from '../components/vendor/VendorOnboardingSection';
 import { VendorOrdersManager } from '../components/vendor/VendorOrdersManager';
 import { VendorEarningsDashboard } from '../components/vendor/VendorEarningsDashboard';
+import { VendorProductsManager } from '../components/vendor/VendorProductsManager';
 import { AdminVendorApplicationsManager } from '../components/admin/AdminVendorApplicationsManager';
 import { AdminOrdersManager } from '../components/admin/AdminOrdersManager';
 import { AdminPayoutsManager } from '../components/admin/AdminPayoutsManager';
@@ -25,6 +29,7 @@ import { AdminAnalyticsDashboard } from '../components/admin/AdminAnalyticsDashb
 
 export const LandingPage: React.FC = () => {
   const { activeRole, setActiveRole, user, openAuthModal } = useApp();
+  const [merchantActiveTab, setMerchantActiveTab] = useState<'all' | 'catalog' | 'orders' | 'payouts'>('all');
 
   return (
     <div className="space-y-10">
@@ -251,7 +256,7 @@ export const LandingPage: React.FC = () => {
           VENDOR MERCHANT OPERATIONS PORTAL
           ========================================================================= */}
       {activeRole === 'vendor' && (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Vendor Portal Intro Banner */}
           <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3.5">
@@ -277,6 +282,65 @@ export const LandingPage: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {/* Quick Sub-Navigation Tab Bar for Merchant */}
+          {user && (user.role === 'vendor' || user.role === 'admin') && (
+            <div className="flex items-center flex-wrap gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/90 shadow-xs">
+              <button
+                onClick={() => setMerchantActiveTab('all')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
+                  merchantActiveTab === 'all'
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4 text-slate-500" />
+                <span>All Overview</span>
+              </button>
+              <button
+                onClick={() => setMerchantActiveTab('catalog')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
+                  merchantActiveTab === 'catalog'
+                    ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <Package className="w-4 h-4 text-indigo-600" />
+                <span>Product Catalog</span>
+              </button>
+              <button
+                onClick={() => setMerchantActiveTab('orders')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
+                  merchantActiveTab === 'orders'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <Truck className="w-4 h-4" />
+                <span>Orders & Shipments</span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                    merchantActiveTab === 'orders'
+                      ? 'bg-emerald-700 text-emerald-100'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}
+                >
+                  Fulfill
+                </span>
+              </button>
+              <button
+                onClick={() => setMerchantActiveTab('payouts')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
+                  merchantActiveTab === 'payouts'
+                    ? 'bg-white text-teal-700 shadow-sm border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <Wallet className="w-4 h-4 text-teal-600" />
+                <span>Revenue & Payouts</span>
+              </button>
+            </div>
+          )}
 
           {/* If user is not signed in, show clean merchant authentication gate */}
           {!user ? (
@@ -324,27 +388,44 @@ export const LandingPage: React.FC = () => {
           ) : (
             <>
               {/* Store Onboarding & Status */}
-              <VendorOnboardingSection />
+              {(merchantActiveTab === 'all' || merchantActiveTab === 'catalog') && (
+                <VendorOnboardingSection />
+              )}
 
-              {/* Order Fulfillment & Shipment Dispatch (for approved vendors or admins) */}
+              {/* Product Catalog & Management (for approved vendors or admins) */}
               {(user.role === 'vendor' || user.role === 'admin') && (
                 <>
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                      <h2 className="text-lg font-bold text-slate-900">Order Fulfillment & Shipment Dispatch</h2>
+                  {(merchantActiveTab === 'all' || merchantActiveTab === 'catalog') && (
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                        <h2 className="text-lg font-bold text-slate-900">Products & Catalog Management</h2>
+                      </div>
+                      <VendorProductsManager />
                     </div>
-                    <VendorOrdersManager />
-                  </div>
+                  )}
+
+                  {/* Order Fulfillment & Shipment Dispatch */}
+                  {(merchantActiveTab === 'all' || merchantActiveTab === 'orders') && (
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <h2 className="text-lg font-bold text-slate-900">Order Fulfillment & Shipment Dispatch</h2>
+                      </div>
+                      <VendorOrdersManager />
+                    </div>
+                  )}
 
                   {/* Vendor Earnings & Balance Payouts */}
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
-                      <h2 className="text-lg font-bold text-slate-900">Revenue Ledger & Balance Payouts</h2>
+                  {(merchantActiveTab === 'all' || merchantActiveTab === 'payouts') && (
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+                        <h2 className="text-lg font-bold text-slate-900">Revenue Ledger & Balance Payouts</h2>
+                      </div>
+                      <VendorEarningsDashboard />
                     </div>
-                    <VendorEarningsDashboard />
-                  </div>
+                  )}
                 </>
               )}
             </>
