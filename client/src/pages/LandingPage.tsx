@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { 
   ShoppingBag, 
   Store, 
@@ -16,16 +16,38 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ProductSearchExperience } from '../components/search/ProductSearchExperience';
-import { VendorOnboardingSection } from '../components/vendor/VendorOnboardingSection';
-import { VendorOrdersManager } from '../components/vendor/VendorOrdersManager';
-import { VendorEarningsDashboard } from '../components/vendor/VendorEarningsDashboard';
-import { VendorProductsManager } from '../components/vendor/VendorProductsManager';
-import { AdminVendorApplicationsManager } from '../components/admin/AdminVendorApplicationsManager';
-import { AdminOrdersManager } from '../components/admin/AdminOrdersManager';
-import { AdminPayoutsManager } from '../components/admin/AdminPayoutsManager';
-import { AdminReviewsModerator } from '../components/admin/AdminReviewsModerator';
-import { AdminCouponsManager } from '../components/admin/AdminCouponsManager';
-import { AdminAnalyticsDashboard } from '../components/admin/AdminAnalyticsDashboard';
+
+// Lazy-loaded vendor and admin dashboard components for optimal code splitting
+const VendorOnboardingSection = React.lazy(() =>
+  import('../components/vendor/VendorOnboardingSection').then((m) => ({ default: m.VendorOnboardingSection }))
+);
+const VendorOrdersManager = React.lazy(() =>
+  import('../components/vendor/VendorOrdersManager').then((m) => ({ default: m.VendorOrdersManager }))
+);
+const VendorEarningsDashboard = React.lazy(() =>
+  import('../components/vendor/VendorEarningsDashboard').then((m) => ({ default: m.VendorEarningsDashboard }))
+);
+const VendorProductsManager = React.lazy(() =>
+  import('../components/vendor/VendorProductsManager').then((m) => ({ default: m.VendorProductsManager }))
+);
+const AdminVendorApplicationsManager = React.lazy(() =>
+  import('../components/admin/AdminVendorApplicationsManager').then((m) => ({ default: m.AdminVendorApplicationsManager }))
+);
+const AdminOrdersManager = React.lazy(() =>
+  import('../components/admin/AdminOrdersManager').then((m) => ({ default: m.AdminOrdersManager }))
+);
+const AdminPayoutsManager = React.lazy(() =>
+  import('../components/admin/AdminPayoutsManager').then((m) => ({ default: m.AdminPayoutsManager }))
+);
+const AdminReviewsModerator = React.lazy(() =>
+  import('../components/admin/AdminReviewsModerator').then((m) => ({ default: m.AdminReviewsModerator }))
+);
+const AdminCouponsManager = React.lazy(() =>
+  import('../components/admin/AdminCouponsManager').then((m) => ({ default: m.AdminCouponsManager }))
+);
+const AdminAnalyticsDashboard = React.lazy(() =>
+  import('../components/admin/AdminAnalyticsDashboard').then((m) => ({ default: m.AdminAnalyticsDashboard }))
+);
 
 export const LandingPage: React.FC = () => {
   const { activeRole, setActiveRole, user, openAuthModal } = useApp();
@@ -386,7 +408,7 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <>
+            <Suspense fallback={<div className="p-12 text-center text-slate-400 font-medium animate-pulse">Loading merchant console...</div>}>
               {/* Store Onboarding & Status */}
               {(merchantActiveTab === 'all' || merchantActiveTab === 'catalog') && (
                 <VendorOnboardingSection />
@@ -428,7 +450,7 @@ export const LandingPage: React.FC = () => {
                   )}
                 </>
               )}
-            </>
+            </Suspense>
           )}
         </div>
       )}
@@ -508,7 +530,7 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <>
+            <Suspense fallback={<div className="p-12 text-center text-slate-400 font-medium animate-pulse">Loading administrative console...</div>}>
               {/* Executive Analytics Dashboard */}
               <div className="space-y-3">
                 <AdminAnalyticsDashboard />
@@ -554,7 +576,7 @@ export const LandingPage: React.FC = () => {
                 </div>
                 <AdminCouponsManager />
               </div>
-            </>
+            </Suspense>
           )}
         </div>
       )}

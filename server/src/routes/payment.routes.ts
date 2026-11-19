@@ -3,6 +3,7 @@ import { PaymentController } from '../controllers/payment.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { authorize } from '../middlewares/rbac.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
+import { paymentLimiter } from '../middlewares/rateLimiter.middleware';
 import {
   createPaymentOrderSchema,
   verifyPaymentSchema,
@@ -19,6 +20,7 @@ router.post('/webhook', PaymentController.handleWebhook);
 router.post(
   '/create-order',
   authenticate,
+  paymentLimiter,
   validateBody(createPaymentOrderSchema),
   PaymentController.createOrder
 );
@@ -26,6 +28,7 @@ router.post(
 router.post(
   '/verify',
   authenticate,
+  paymentLimiter,
   validateBody(verifyPaymentSchema),
   PaymentController.verifyPayment
 );
@@ -40,6 +43,7 @@ router.get(
 router.post(
   '/create-qr-code',
   authenticate,
+  paymentLimiter,
   validateBody(createQrCodeSchema),
   PaymentController.createQrCode
 );
@@ -59,6 +63,7 @@ router.post(
 router.post(
   '/simulate-qr',
   authenticate,
+  paymentLimiter,
   validateBody(simulateQrPaymentSchema),
   PaymentController.simulateQrPayment
 );

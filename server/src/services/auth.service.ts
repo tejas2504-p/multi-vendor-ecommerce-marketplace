@@ -1,7 +1,7 @@
 import { User } from '../models/user.model';
 import { RegisterInput, LoginInput } from '../validators/auth.validator';
 import { AppError } from '../utils/apiError';
-import { generateAccessToken } from '../utils/token';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/token';
 
 export interface SafeUser {
   id: string;
@@ -16,6 +16,7 @@ export interface SafeUser {
 export interface AuthResult {
   user: SafeUser;
   token: string;
+  refreshToken?: string;
 }
 
 const toSafeUser = (user: any): SafeUser => ({
@@ -52,8 +53,13 @@ export class AuthService {
       role: assignedRole,
     });
 
-    // 4. Generate JWT access token
+    // 4. Generate JWT access and refresh tokens
     const token = generateAccessToken({
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+    });
+    const refreshToken = generateRefreshToken({
       id: user._id.toString(),
       email: user.email,
       role: user.role,
@@ -62,11 +68,12 @@ export class AuthService {
     return {
       user: toSafeUser(user),
       token,
+      refreshToken,
     };
   }
 
   /**
-   * Authenticates user credentials and returns safe user data with a signed JWT
+   * Authenticates user credentials and returns safe user data with signed JWTs
    */
   static async login(input: LoginInput): Promise<AuthResult> {
     const normalizedEmail = input.email.toLowerCase().trim();
@@ -88,8 +95,13 @@ export class AuthService {
       throw AppError.unauthorized('Invalid email or password');
     }
 
-    // 4. Generate JWT access token
+    // 4. Generate JWT access and refresh tokens
     const token = generateAccessToken({
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+    });
+    const refreshToken = generateRefreshToken({
       id: user._id.toString(),
       email: user.email,
       role: user.role,
@@ -98,6 +110,40 @@ export class AuthService {
     return {
       user: toSafeUser(user),
       token,
+      refreshToken,
+    };
+  }
+
+  /**
+   * Rotates and issues a fresh 15-minute access token and refresh token
+   */
+  static async refresh(oldRefreshToken: string): Promise<AuthResult> {
+    if (!oldRefreshToken) {
+      throw AppError.unauthorized('Refresh token is required');
+    }
+
+    const payload = verifyRefreshToken(oldRefreshToken);
+    const user = await User.findById(payload.id);
+    if (!user || !user.isActive) {
+      throw AppError.unauthorized('User session is no longer active or user does not exist');
+    }
+
+    const token = generateAccessToken({
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+    });
+
+    const refreshToken = generateRefreshToken({
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+    });
+
+    return {
+      user: toSafeUser(user),
+      token,
+      refreshToken,
     };
   }
 

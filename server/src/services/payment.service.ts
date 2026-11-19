@@ -11,6 +11,7 @@ import { VerifyPaymentInput } from '../validators/payment.validator';
 import { logger } from '../utils/logger';
 import { CommissionService } from './commission.service';
 import { InvoiceService } from './invoice.service';
+import { AnalyticsCacheService } from './analyticsCache.service';
 
 export interface RazorpayOrderCheckoutData {
   keyId: string;
@@ -266,6 +267,11 @@ export class PaymentService {
       logger.error(`Automatic invoice generation failed for order ${order.orderNumber}: ${invErr.message}`);
     }
 
+    // Invalidate Redis analytics cache on payment capture
+    await AnalyticsCacheService.invalidateAll().catch((cacheErr) => {
+      logger.warn(`Analytics cache invalidation failed: ${cacheErr.message}`);
+    });
+
     logger.info(`Payment verified and captured successfully for order ${order.orderNumber}`);
 
     return { payment, order, isDuplicate: false };
@@ -348,6 +354,11 @@ export class PaymentService {
         } catch (invErr: any) {
           logger.error(`Automatic invoice generation failed for order ${payment.parentOrderId}: ${invErr.message}`);
         }
+
+        // Invalidate Redis analytics cache on payment capture
+        await AnalyticsCacheService.invalidateAll().catch((cacheErr) => {
+          logger.warn(`Analytics cache invalidation failed: ${cacheErr.message}`);
+        });
       }
     } else if (paymentEntity) {
       const rzpOrderId = paymentEntity.order_id;
@@ -385,6 +396,11 @@ export class PaymentService {
             } catch (invErr: any) {
               logger.error(`Automatic invoice generation failed for order ${payment.parentOrderId}: ${invErr.message}`);
             }
+
+            // Invalidate Redis analytics cache on payment capture
+            await AnalyticsCacheService.invalidateAll().catch((cacheErr) => {
+              logger.warn(`Analytics cache invalidation failed: ${cacheErr.message}`);
+            });
           } else if (eventType === 'payment.failed') {
             payment.status = 'failed';
             payment.razorpayPaymentId = rzpPaymentId;
@@ -733,6 +749,11 @@ export class PaymentService {
               logger.error(`Invoice generation failed for order ${order.orderNumber}: ${err.message}`);
             }
 
+            // Invalidate Redis analytics cache on payment capture
+            await AnalyticsCacheService.invalidateAll().catch((cacheErr) => {
+              logger.warn(`Analytics cache invalidation failed: ${cacheErr.message}`);
+            });
+
             return {
               status: 'paid',
               orderNumber: order.orderNumber,
@@ -862,6 +883,11 @@ export class PaymentService {
     } catch (invErr: any) {
       logger.error(`Invoice generation failed for order ${order.orderNumber}: ${invErr.message}`);
     }
+
+    // Invalidate Redis analytics cache on payment capture
+    await AnalyticsCacheService.invalidateAll().catch((cacheErr) => {
+      logger.warn(`Analytics cache invalidation failed: ${cacheErr.message}`);
+    });
 
     return { status: 'paid', order, payment, message: 'Simulated payment verified and order marked paid' };
   }

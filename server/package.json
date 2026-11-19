@@ -8,6 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "rimraf dist && tsc",
     "seed:demo": "tsx src/scripts/seedDemoAccounts.ts",
+    "seed:dummyjson": "tsx src/scripts/seedFromDummyJson.ts",
     "test:phase3:live": "tsx src/scripts/testPhase3Live.ts",
     "test:phase4:live": "tsx src/scripts/testPhase4Live.ts",
     "test:cart:live": "tsx src/scripts/testCartLive.ts",

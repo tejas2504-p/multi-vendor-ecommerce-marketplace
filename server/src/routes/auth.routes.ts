@@ -10,6 +10,7 @@ const router = Router();
 // Public auth routes with rate limiting
 router.post('/register', authLimiter, validateBody(registerSchema), AuthController.register);
 router.post('/login', authLimiter, validateBody(loginSchema), AuthController.login);
+router.post('/refresh', authLimiter, AuthController.refresh);
 router.post('/logout', AuthController.logout);
 
 // Authenticated session route

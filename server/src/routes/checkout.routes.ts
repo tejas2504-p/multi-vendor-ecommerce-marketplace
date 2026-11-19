@@ -3,6 +3,7 @@ import { authenticate } from '../middlewares/auth.middleware';
 import { authorize } from '../middlewares/rbac.middleware';
 import { validateBody, validateParams } from '../middlewares/validate.middleware';
 import { checkoutSchema, orderIdParamSchema } from '../validators/checkout.validator';
+import { checkoutLimiter } from '../middlewares/rateLimiter.middleware';
 import { CheckoutController } from '../controllers/checkout.controller';
 
 const router = Router();
@@ -14,7 +15,7 @@ router.use(authenticate, authorize('customer', 'admin'));
  * POST /api/checkout
  * Converts cart items into an immutable order with stock deduction
  */
-router.post('/', validateBody(checkoutSchema), CheckoutController.checkout);
+router.post('/', checkoutLimiter, validateBody(checkoutSchema), CheckoutController.checkout);
 
 /**
  * GET /api/checkout/orders

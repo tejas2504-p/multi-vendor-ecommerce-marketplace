@@ -170,6 +170,9 @@ vendorProfileSchema.pre('validate', function (next) {
   next();
 });
 
+// Query indexes for admin filtering and listing
+vendorProfileSchema.index({ status: 1, createdAt: -1 });
+
 export const VendorProfile = model<IVendorProfile, VendorProfileModel>(
   'VendorProfile',
   vendorProfileSchema

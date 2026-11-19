@@ -23,12 +23,29 @@ import { invoiceRoutes } from './routes/invoice.routes';
 import { v1Router } from './routes/v1';
 import { notFoundMiddleware } from './middlewares/notFound.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
+import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize.middleware';
+import { apiLimiter } from './middlewares/rateLimiter.middleware';
 
 export const createApp = (): Application => {
   const app = express();
 
   // Security Headers
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'https://checkout.razorpay.com'],
+          frameSrc: ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
+          imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:'],
+          connectSrc: ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com', env.CLIENT_URL],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        },
+      },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    })
+  );
 
   // CORS Configuration
   app.use(
@@ -51,6 +68,12 @@ export const createApp = (): Application => {
   );
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.use(cookieParser());
+
+  // Prevent NoSQL query injection by sanitizing user inputs (body, query, params)
+  app.use(mongoSanitizeMiddleware);
+
+  // Global API rate limiting
+  app.use('/api', apiLimiter);
 
   // HTTP Request Logging
   if (env.NODE_ENV !== 'test') {
