@@ -10,11 +10,22 @@ let elasticClientInstance: Client | null = null;
 
 export const getElasticsearchClient = (): Client => {
   if (!elasticClientInstance) {
-    elasticClientInstance = new Client({
+    const clientOptions: any = {
       node: env.ELASTICSEARCH_NODE,
       maxRetries: 3,
       requestTimeout: 10000,
-    });
+    };
+
+    if (env.ELASTICSEARCH_API_KEY) {
+      clientOptions.auth = { apiKey: env.ELASTICSEARCH_API_KEY };
+    } else if (env.ELASTICSEARCH_USERNAME && env.ELASTICSEARCH_PASSWORD) {
+      clientOptions.auth = {
+        username: env.ELASTICSEARCH_USERNAME,
+        password: env.ELASTICSEARCH_PASSWORD,
+      };
+    }
+
+    elasticClientInstance = new Client(clientOptions);
     logger.info(`✅ Elasticsearch client initialised [node: ${env.ELASTICSEARCH_NODE}]`);
   }
   return elasticClientInstance;

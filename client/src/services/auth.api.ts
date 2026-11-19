@@ -16,6 +16,9 @@ export const authApi = {
     if (data?.token) {
       localStorage.setItem('access_token', data.token);
     }
+    if (data?.refreshToken) {
+      localStorage.setItem('refresh_token', data.refreshToken);
+    }
     return data?.user || data;
   },
 
@@ -27,6 +30,9 @@ export const authApi = {
     const data = res.data.data;
     if (data?.token) {
       localStorage.setItem('access_token', data.token);
+    }
+    if (data?.refreshToken) {
+      localStorage.setItem('refresh_token', data.refreshToken);
     }
     return data?.user || data;
   },
@@ -48,6 +54,7 @@ export const authApi = {
       await apiClient.post('/api/auth/logout');
     } finally {
       localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
     }
   },
 

@@ -1,6 +1,7 @@
 import { getElasticsearchClient, ELASTICSEARCH_INDEX } from '../config/elastic.config';
 import { IndexedProductDocument } from './productIndexing.service';
 import { SearchProductsQuery } from '../validators/productSearch.validator';
+import { Product } from '../models/product.model';
 import { AppError } from '../utils/apiError';
 import { logger } from '../utils/logger';
 
@@ -303,8 +304,80 @@ export class ProductSearchService {
         },
       };
     } catch (error: any) {
-      if (error instanceof AppError) throw error;
-      logger.error(`❌ Elasticsearch search execution failed: ${error.message}`);
+      logger.warn(`Elasticsearch search execution warning: ${error.message}. Executing database fallback search.`);
+      return await this.fallbackMongoSearch(params);
+    }
+  }
+
+  /**
+   * Resilient MongoDB fallback search when Elasticsearch cluster is restarting or unavailable.
+   */
+  private static async fallbackMongoSearch(params: SearchProductsQuery): Promise<ProductSearchResult> {
+    try {
+      const filter: any = { status: 'active', isDeleted: false };
+      if (params.q) {
+        filter.$or = [
+          { name: { $regex: params.q, $options: 'i' } },
+          { brand: { $regex: params.q, $options: 'i' } },
+          { description: { $regex: params.q, $options: 'i' } },
+        ];
+      }
+      if (params.brand) filter.brand = new RegExp(`^${params.brand}$`, 'i');
+      if (params.minPrice !== undefined || params.maxPrice !== undefined) {
+        filter.price = {};
+        if (params.minPrice !== undefined) filter.price.$gte = params.minPrice;
+        if (params.maxPrice !== undefined) filter.price.$lte = params.maxPrice;
+      }
+
+      const totalHits = await Product.countDocuments(filter);
+      const totalPages = Math.ceil(totalHits / params.limit) || 1;
+      const sortOption: any =
+        params.sort === 'price_asc'
+          ? { price: 1 }
+          : params.sort === 'price_desc'
+          ? { price: -1 }
+          : { createdAt: -1 };
+
+      const mongoProducts = await Product.find(filter)
+        .sort(sortOption)
+        .skip((params.page - 1) * params.limit)
+        .limit(params.limit)
+        .populate('categoryId', 'name slug');
+
+      const products: IndexedProductDocument[] = mongoProducts.map((p: any) => ({
+        productId: p._id.toString(),
+        name: p.name,
+        description: p.description,
+        brand: p.brand || '',
+        categoryId: p.categoryId?._id?.toString() || p.categoryId?.toString() || '',
+        categoryName: p.categoryId?.name || 'General',
+        vendorId: p.vendorId?.toString() || '',
+        price: p.price,
+        stock: p.stock ?? p.inventoryStock ?? 0,
+        sku: p.sku || '',
+        status: p.status,
+        rating: p.averageRating || 0,
+        images: Array.isArray(p.images)
+          ? p.images.map((img: any) => (typeof img === 'string' ? img : img.key || img.url || ''))
+          : [],
+        createdAt: p.createdAt?.toISOString() || new Date().toISOString(),
+        updatedAt: p.updatedAt?.toISOString() || new Date().toISOString(),
+      }));
+
+      return {
+        products,
+        totalResults: totalHits,
+        currentPage: params.page,
+        totalPages,
+        appliedFilters: params,
+        availableFilters: {
+          categories: [],
+          brands: [],
+          priceRange: { min: 0, max: 5000 },
+        },
+      };
+    } catch (fallbackErr: any) {
+      logger.error(`Database fallback search failed: ${fallbackErr.message}`);
       throw AppError.serviceUnavailable('Search service is temporarily unavailable. Please try again later.');
     }
   }
@@ -383,8 +456,39 @@ export class ProductSearchService {
         items,
       };
     } catch (error: any) {
-      logger.error(`❌ Elasticsearch suggestions query failed: ${error.message}`);
-      throw AppError.serviceUnavailable('Search suggestions are temporarily unavailable.');
+      logger.warn(`Elasticsearch suggestions warning: ${error.message}. Falling back to database suggestions.`);
+      try {
+        const mongoProducts = await Product.find({
+          status: 'active',
+          isDeleted: false,
+          $or: [
+            { name: { $regex: sanitized, $options: 'i' } },
+            { brand: { $regex: sanitized, $options: 'i' } },
+          ],
+        })
+          .limit(limit)
+          .select('name brand price categoryId');
+
+        const suggestions: string[] = [];
+        const items: SearchSuggestionItem[] = [];
+
+        for (const p of mongoProducts) {
+          if (!suggestions.includes(p.name)) {
+            suggestions.push(p.name);
+          }
+          items.push({
+            id: p._id.toString(),
+            name: p.name,
+            brand: p.brand,
+            price: p.price,
+          });
+        }
+
+        return { query: sanitized, suggestions, items };
+      } catch (dbErr: any) {
+        logger.error(`Database suggestion fallback failed: ${dbErr.message}`);
+        return { query: sanitized, suggestions: [], items: [] };
+      }
     }
   }
 }

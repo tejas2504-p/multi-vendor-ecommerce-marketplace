@@ -10,13 +10,19 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.string().transform((val) => parseInt(val, 10)).default('5000'),
-  CLIENT_URL: z.string().url().default('http://localhost:5173'),
+  PORT: z
+    .union([z.string(), z.number()])
+    .transform((val) => (typeof val === 'number' ? val : parseInt(val, 10)))
+    .default('5000'),
+  CLIENT_URL: z.string().default('http://localhost:5173'),
 
   MONGO_URI: z.string().default('mongodb://localhost:27017/marketplace'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   ELASTICSEARCH_NODE: z.string().default('http://localhost:9200'),
   ELASTICSEARCH_INDEX: z.string().default('marketplace_products'),
+  ELASTICSEARCH_API_KEY: z.string().optional(),
+  ELASTICSEARCH_USERNAME: z.string().optional(),
+  ELASTICSEARCH_PASSWORD: z.string().optional(),
 
   JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 characters'),
   JWT_ACCESS_EXPIRY: z.string().default('15m'),

@@ -29,6 +29,9 @@ import { apiLimiter } from './middlewares/rateLimiter.middleware';
 export const createApp = (): Application => {
   const app = express();
 
+  // Dynamic CORS & CSP Allowed Origins
+  const configuredOrigins = env.CLIENT_URL.split(',').map((u) => u.trim().replace(/\/$/, ''));
+
   // Security Headers
   app.use(
     helmet({
@@ -38,7 +41,13 @@ export const createApp = (): Application => {
           scriptSrc: ["'self'", "'unsafe-inline'", 'https://checkout.razorpay.com'],
           frameSrc: ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
           imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:'],
-          connectSrc: ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com', env.CLIENT_URL],
+          connectSrc: [
+            "'self'",
+            'https://api.razorpay.com',
+            'https://lumberjack.razorpay.com',
+            'https://*.vercel.app',
+            ...configuredOrigins,
+          ],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         },
@@ -47,10 +56,24 @@ export const createApp = (): Application => {
     })
   );
 
-  // CORS Configuration
+  // Production-grade Cross-Origin Resource Sharing (CORS) Configuration
   app.use(
     cors({
-      origin: env.CLIENT_URL,
+      origin: (requestOrigin, callback) => {
+        // Allow requests without Origin (e.g. webhooks, server-to-server, curl)
+        if (!requestOrigin) return callback(null, true);
+
+        const cleanOrigin = requestOrigin.replace(/\/$/, '');
+        if (
+          configuredOrigins.includes(cleanOrigin) ||
+          (env.NODE_ENV !== 'production' && cleanOrigin.startsWith('http://localhost:')) ||
+          cleanOrigin.endsWith('.vercel.app')
+        ) {
+          return callback(null, true);
+        }
+
+        return callback(new Error(`CORS blocked request from unauthorized origin: ${requestOrigin}`));
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

@@ -60,21 +60,28 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const refreshUrl = `${import.meta.env.VITE_API_URL || ''}/api/auth/refresh`;
+        const incomingRefreshToken = localStorage.getItem('refresh_token');
         const refreshResponse = await axios.post(
-          '/api/auth/refresh',
-          {},
+          refreshUrl,
+          { refreshToken: incomingRefreshToken },
           { withCredentials: true }
         );
         const newToken = refreshResponse.data?.data?.token;
+        const newRefreshToken = refreshResponse.data?.data?.refreshToken;
         if (newToken) {
           localStorage.setItem('access_token', newToken);
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        }
+        if (newRefreshToken) {
+          localStorage.setItem('refresh_token', newRefreshToken);
         }
         processQueue(null, newToken);
         return apiClient(originalRequest);
       } catch (refreshErr) {
         processQueue(refreshErr, null);
         localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;
