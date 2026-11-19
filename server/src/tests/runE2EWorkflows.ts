@@ -13,6 +13,9 @@ import { VendorOrder } from '../models/vendorOrder.model';
 import { Coupon } from '../models/coupon.model';
 import { AUTH_COOKIE_NAME, generateAccessToken } from '../utils/token';
 import { env } from '../config/env.config';
+import { setElasticsearchClient } from '../config/elastic.config';
+import { SearchMockElasticsearchClient } from './mocks/searchMockElastic';
+import { ProductIndexingService } from '../services/productIndexing.service';
 
 const getCookies = (token: string): string[] => [`${AUTH_COOKIE_NAME}=${token}; Path=/; HttpOnly`];
 const generateSignature = (orderId: string, paymentId: string, secret: string = env.RAZORPAY_KEY_SECRET): string => {
@@ -27,6 +30,9 @@ async function runE2EWorkflowTests() {
   process.env.NODE_ENV = 'test';
   process.env.JWT_ACCESS_SECRET = 'super_secret_test_jwt_key_at_least_32_characters_long';
   process.env.JWT_ACCESS_EXPIRY = '15m';
+
+  const mockEs = new SearchMockElasticsearchClient();
+  setElasticsearchClient(mockEs as any);
 
   let mongoServer: MongoMemoryServer | null = null;
   const mongoUri = 'mongodb://localhost:27017/marketplace_test_e2e';
@@ -104,6 +110,7 @@ async function runE2EWorkflowTests() {
       status: 'active',
       sku: 'ALPHA-MON-001',
     });
+    await ProductIndexingService.indexProduct(product1);
 
     // Seed Active Coupon for E2E
     await Coupon.create({
