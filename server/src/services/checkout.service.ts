@@ -7,6 +7,7 @@ import { Order, IOrder, IOrderItemSnapshot, IDeliveryAddressSnapshot, ICouponSna
 import { VendorOrder, IVendorOrder } from '../models/vendorOrder.model';
 import { Coupon } from '../models/coupon.model';
 import { CouponUsage } from '../models/couponUsage.model';
+import { Payment } from '../models/payment.model';
 import { CartCacheService } from './cartCache.service';
 import { AppError } from '../utils/apiError';
 import { CheckoutInput } from '../validators/checkout.validator';
@@ -330,6 +331,8 @@ export class CheckoutService {
       });
     }
 
+    const paymentMethod = input.paymentMethod || 'card';
+
     const orderData: Partial<IOrder> = {
       orderNumber,
       userId: userObjectId,
@@ -342,6 +345,7 @@ export class CheckoutService {
       totalAmount,
       couponCode: appliedCoupon ? appliedCoupon.code : undefined,
       couponSnapshot,
+      paymentMethod,
       paymentStatus: 'pending',
       orderStatus: 'confirmed',
       idempotencyKey: input.idempotencyKey,
@@ -575,6 +579,24 @@ export class CheckoutService {
         .catch((err) => {
           logger.warn(`Failed to sync product ${item.productId} to search index after checkout: ${err.message}`);
         });
+    }
+
+    // If Cash on Delivery, record pending COD payment
+    if (paymentMethod === 'cod') {
+      try {
+        await Payment.create({
+          customerId: userObjectId,
+          parentOrderId: createdOrder._id,
+          razorpayOrderId: `cod_${createdOrder.orderNumber}`,
+          amount: createdOrder.totalAmount,
+          currency: 'INR',
+          paymentMethod: 'cod',
+          status: 'pending',
+          notes: new Map([['deliveryNote', 'Cash on Delivery - Collect payment upon arrival']]),
+        });
+      } catch (err: any) {
+        logger.warn(`Could not create COD payment record: ${err.message}`);
+      }
     }
 
     const populated = await Order.findById(createdOrder._id).populate('vendorOrders');

@@ -3,7 +3,12 @@ import { PaymentController } from '../controllers/payment.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { authorize } from '../middlewares/rbac.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
-import { createPaymentOrderSchema, verifyPaymentSchema } from '../validators/payment.validator';
+import {
+  createPaymentOrderSchema,
+  verifyPaymentSchema,
+  createQrCodeSchema,
+  simulateQrPaymentSchema,
+} from '../validators/payment.validator';
 
 const router = Router();
 
@@ -29,6 +34,33 @@ router.get(
   '/order/:orderId',
   authenticate,
   PaymentController.getPaymentByOrder
+);
+
+// UPI Dynamic QR-Code Endpoints (Protected)
+router.post(
+  '/create-qr-code',
+  authenticate,
+  validateBody(createQrCodeSchema),
+  PaymentController.createQrCode
+);
+
+router.get(
+  '/qr-status/:orderId',
+  authenticate,
+  PaymentController.getQrStatus
+);
+
+router.post(
+  '/cancel-qr',
+  authenticate,
+  PaymentController.cancelQrCode
+);
+
+router.post(
+  '/simulate-qr',
+  authenticate,
+  validateBody(simulateQrPaymentSchema),
+  PaymentController.simulateQrPayment
 );
 
 // Admin endpoints (Protected, Admin only)

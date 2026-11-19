@@ -11,31 +11,44 @@ export const authApi = {
    * Register a new user account (defaults to Customer role).
    */
   register: async (credentials: RegisterCredentials): Promise<AuthUser> => {
-    const res = await apiClient.post<ApiResponse<AuthUser>>('/api/auth/register', credentials);
-    return res.data.data;
+    const res = await apiClient.post<ApiResponse<any>>('/api/auth/register', credentials);
+    const data = res.data.data;
+    if (data?.token) {
+      localStorage.setItem('access_token', data.token);
+    }
+    return data?.user || data;
   },
 
   /**
    * Login with email and password.
    */
   login: async (credentials: LoginCredentials): Promise<AuthUser> => {
-    const res = await apiClient.post<ApiResponse<AuthUser>>('/api/auth/login', credentials);
-    return res.data.data;
+    const res = await apiClient.post<ApiResponse<any>>('/api/auth/login', credentials);
+    const data = res.data.data;
+    if (data?.token) {
+      localStorage.setItem('access_token', data.token);
+    }
+    return data?.user || data;
   },
 
   /**
    * Get the current authenticated user's session profile.
    */
   getMe: async (): Promise<AuthUser> => {
-    const res = await apiClient.get<ApiResponse<AuthUser>>('/api/auth/me');
-    return res.data.data;
+    const res = await apiClient.get<ApiResponse<any>>('/api/auth/me');
+    const data = res.data.data;
+    return data?.user || data;
   },
 
   /**
    * Logout and clear authentication cookies.
    */
   logout: async (): Promise<void> => {
-    await apiClient.post('/api/auth/logout');
+    try {
+      await apiClient.post('/api/auth/logout');
+    } finally {
+      localStorage.removeItem('access_token');
+    }
   },
 
   /**

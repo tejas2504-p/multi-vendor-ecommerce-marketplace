@@ -34,6 +34,8 @@ const envSchema = z.object({
   RAZORPAY_KEY_ID: z.string().default('rzp_test_placeholder'),
   RAZORPAY_KEY_SECRET: z.string().default('rzp_secret_placeholder'),
   RAZORPAY_WEBHOOK_SECRET: z.string().default('rzp_whsec_placeholder'),
+  MERCHANT_UPI_VPA: z.string().default('tejasprajapati2504@oksbi'),
+  MERCHANT_NAME: z.string().default('NexusMarket'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

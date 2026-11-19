@@ -20,6 +20,7 @@ export const checkoutSchema = z.object({
     .max(30)
     .transform((val) => val.toUpperCase())
     .optional(),
+  paymentMethod: z.enum(['upi', 'upi_qr', 'card', 'netbanking', 'wallet', 'cod', 'razorpay']).optional().default('card'),
 });
 
 export const orderIdParamSchema = z.object({

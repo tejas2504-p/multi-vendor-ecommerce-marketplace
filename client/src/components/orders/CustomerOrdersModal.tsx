@@ -11,12 +11,17 @@ import {
   CreditCard,
   CheckCircle2,
   FileText,
+  Banknote,
+  Sparkles,
+  QrCode,
 } from 'lucide-react';
-import { Order, VendorOrder } from '../../types';
+import { Order, VendorOrder, PaymentMethodType } from '../../types';
 import { orderApi } from '../../services/order.api';
 import { paymentApi } from '../../services/payment.api';
 import { invoiceApi } from '../../services/invoice.api';
 import { loadRazorpayScript } from '../../utils/loadRazorpay';
+import { PaymentMethodSelector } from '../checkout/PaymentMethodSelector';
+import { UpiQrPaymentModal } from '../checkout/UpiQrPaymentModal';
 
 interface CustomerOrdersModalProps {
   isOpen: boolean;
@@ -36,6 +41,12 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
   const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Payment Method Selection & Test Gateway Simulator State
+  const [selectedPayMethod, setSelectedPayMethod] = useState<PaymentMethodType>('upi_qr');
+  const [showSimulatorModal, setShowSimulatorModal] = useState<boolean>(false);
+  const [showUpiQrModal, setShowUpiQrModal] = useState<boolean>(false);
+  const [testOrderData, setTestOrderData] = useState<any>(null);
+
   const loadOrders = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -54,6 +65,8 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
       loadOrders();
       setSelectedOrder(null);
       setVendorOrders([]);
+      setShowSimulatorModal(false);
+      setTestOrderData(null);
     }
   }, [isOpen, loadOrders]);
 
@@ -61,6 +74,11 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
     setSelectedOrder(order);
     setPaymentError(null);
     setPaymentSuccess(false);
+    if (order.paymentMethod && order.paymentMethod !== 'cod') {
+      setSelectedPayMethod(order.paymentMethod as PaymentMethodType);
+    } else {
+      setSelectedPayMethod('upi');
+    }
     try {
       setIsLoadingDetails(true);
       const vo = await orderApi.getCustomerVendorOrders(order.id);
@@ -72,30 +90,57 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
     }
   };
 
-  const handlePayOrder = async (order: Order) => {
+  const handlePayOrder = async (order: Order, overrideMethod?: PaymentMethodType) => {
+    const methodToUse = overrideMethod || selectedPayMethod || 'upi_qr';
+
+    if (methodToUse === 'upi_qr') {
+      setShowUpiQrModal(true);
+      return;
+    }
+
     try {
       setIsProcessingPayment(true);
       setPaymentError(null);
 
-      const rzpOrderData = await paymentApi.createOrder(order.id);
+      // 1. Create Razorpay order on backend (/api/payments/create-order)
+      const rzpOrderData = await paymentApi.createOrder(order.id, methodToUse);
+
+      // 2. Check if running in development/test with placeholder key
+      if (rzpOrderData.keyId.includes('placeholder')) {
+        setTestOrderData(rzpOrderData);
+        setShowSimulatorModal(true);
+        setIsProcessingPayment(false);
+        return;
+      }
+
       const isLoaded = await loadRazorpayScript();
       if (!isLoaded) {
         throw new Error('Razorpay SDK failed to load. Please verify your connection.');
       }
+
+      const razorpayMethodKey =
+        methodToUse === 'card'
+          ? 'card'
+          : methodToUse === 'netbanking'
+          ? 'netbanking'
+          : methodToUse === 'wallet'
+          ? 'wallet'
+          : 'upi';
 
       const options = {
         key: rzpOrderData.keyId,
         amount: rzpOrderData.amount,
         currency: rzpOrderData.currency,
         name: 'NexusMarket Multi-Vendor',
-        description: `Payment for Order #${order.orderNumber}`,
+        description: `Payment for Order #${order.orderNumber} via ${methodToUse.toUpperCase()}`,
         order_id: rzpOrderData.razorpayOrderId,
         prefill: {
           name: rzpOrderData.customer.name,
           contact: rzpOrderData.customer.phone,
+          method: razorpayMethodKey,
         },
         theme: {
-          color: '#4F46E5',
+          color: '#10B981', // light green emerald
         },
         handler: async (response: any) => {
           try {
@@ -104,6 +149,7 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
+              paymentMethod: methodToUse,
             });
 
             setSelectedOrder(verifyResult.order);
@@ -118,6 +164,7 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
         modal: {
           ondismiss: () => {
             setIsProcessingPayment(false);
+            setPaymentError('Payment window was closed. You can retry paying anytime.');
           },
         },
       };
@@ -130,6 +177,45 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
       rzp.open();
     } catch (err: any) {
       setPaymentError(err?.response?.data?.error?.message || err.message || 'Payment initiation failed');
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handleSimulatePayment = async (status: 'success' | 'failed' | 'cancel') => {
+    if (!testOrderData || !selectedOrder) return;
+    try {
+      setIsProcessingPayment(true);
+      setShowSimulatorModal(false);
+
+      if (status === 'cancel') {
+        setPaymentError('Payment window was closed. You can retry paying anytime.');
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      if (status === 'failed') {
+        setPaymentError('Simulated payment failed: Card declined / UPI transaction failed at issuing bank.');
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      // Success simulation: submit to backend verification
+      const simPaymentId = `pay_sim_${Date.now()}`;
+      const simSignature = `sim_sig_${Date.now()}`;
+
+      const verifyResult = await paymentApi.verifyPayment({
+        razorpay_order_id: testOrderData.razorpayOrderId,
+        razorpay_payment_id: simPaymentId,
+        razorpay_signature: simSignature,
+        paymentMethod: selectedPayMethod,
+      });
+
+      setSelectedOrder(verifyResult.order);
+      setPaymentSuccess(true);
+      loadOrders();
+    } catch (err: any) {
+      setPaymentError(err?.response?.data?.error?.message || 'Payment verification failed');
+    } finally {
       setIsProcessingPayment(false);
     }
   };
@@ -257,6 +343,16 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
                     <p className="text-slate-600">
                       Shipping: {selectedOrder.shippingAmount === 0 ? 'FREE' : `$${selectedOrder.shippingAmount.toFixed(2)}`}
                     </p>
+                    <p className="text-slate-600">
+                      Method:{' '}
+                      <span className="font-semibold text-slate-800 uppercase">
+                        {selectedOrder.paymentMethod === 'cod'
+                          ? 'Cash on Delivery (COD)'
+                          : selectedOrder.paymentMethod
+                          ? selectedOrder.paymentMethod
+                          : 'Online'}
+                      </span>
+                    </p>
                     <div className="flex items-center space-x-2 mt-1">
                       <span className="text-sm font-black text-slate-900">
                         Total: ${selectedOrder.totalAmount.toFixed(2)}
@@ -265,31 +361,54 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
                           selectedOrder.paymentStatus === 'paid'
                             ? 'bg-emerald-100 text-emerald-800'
+                            : selectedOrder.paymentMethod === 'cod'
+                            ? 'bg-teal-100 text-teal-800'
                             : 'bg-amber-100 text-amber-800'
                         }`}
                       >
-                        {selectedOrder.paymentStatus === 'paid' ? 'Paid (Captured)' : selectedOrder.paymentStatus}
+                        {selectedOrder.paymentStatus === 'paid'
+                          ? 'Paid (Captured)'
+                          : selectedOrder.paymentMethod === 'cod'
+                          ? 'COD (Pending on Delivery)'
+                          : selectedOrder.paymentStatus}
                       </span>
                     </div>
 
-                    {selectedOrder.paymentStatus !== 'paid' && selectedOrder.orderStatus !== 'cancelled' && (
-                      <button
-                        onClick={() => handlePayOrder(selectedOrder)}
-                        disabled={isProcessingPayment}
-                        className="mt-2.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center space-x-1.5 transition disabled:opacity-50"
-                      >
-                        {isProcessingPayment ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Processing...</span>
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="w-3.5 h-3.5" />
-                            <span>Pay with Razorpay</span>
-                          </>
-                        )}
-                      </button>
+                    {selectedOrder.paymentMethod === 'cod' && (
+                      <div className="mt-2.5 p-2.5 bg-teal-50 border border-teal-200 rounded-xl text-[11px] text-teal-800 flex items-start space-x-1.5">
+                        <Banknote className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                        <span>Pay ${selectedOrder.totalAmount.toFixed(2)} in cash or UPI upon delivery.</span>
+                      </div>
+                    )}
+
+                    {selectedOrder.paymentStatus !== 'paid' && selectedOrder.paymentMethod !== 'cod' && selectedOrder.orderStatus !== 'cancelled' && (
+                      <div className="mt-3 space-y-2">
+                        <span className="font-bold text-[11px] text-slate-700 block">Choose Payment Option:</span>
+                        <PaymentMethodSelector
+                          selectedMethod={selectedPayMethod}
+                          onSelectMethod={setSelectedPayMethod}
+                          allowCod={false}
+                          compact={true}
+                        />
+
+                        <button
+                          onClick={() => handlePayOrder(selectedOrder, selectedPayMethod)}
+                          disabled={isProcessingPayment}
+                          className="w-full mt-2 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-center space-x-1.5 transition disabled:opacity-50"
+                        >
+                          {isProcessingPayment ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Connecting to Gateway...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard className="w-3.5 h-3.5" />
+                              <span>Pay via {selectedPayMethod.toUpperCase()} with Razorpay</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     )}
 
                     {/* Download Invoice Action */}
@@ -443,6 +562,9 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
                         >
                           {ord.orderStatus.replace('_', ' ')}
                         </span>
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-600 uppercase">
+                          {ord.paymentMethod === 'cod' ? 'COD' : ord.paymentMethod || 'Online'}
+                        </span>
                       </div>
                       <p className="text-xs text-slate-500">
                         {new Date(ord.createdAt).toLocaleDateString()} • {ord.items.length}{' '}
@@ -461,6 +583,122 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({ isOpen
           )}
         </div>
       </div>
+
+      {/* Razorpay Test Mode Gateway Simulator Modal */}
+      {showSimulatorModal && testOrderData && (
+        <div className="fixed inset-0 z-[90] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-5 h-5 text-emerald-200" />
+                <div>
+                  <h3 className="text-sm font-bold">Razorpay Test Gateway Simulator</h3>
+                  <p className="text-[11px] text-emerald-100">Sandbox Environment Mode</p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleSimulatePayment('cancel')}
+                className="p-1 rounded-full text-white/80 hover:text-white hover:bg-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Order Number:</span>
+                  <span className="font-bold text-slate-800">{selectedOrder?.orderNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Payment Method:</span>
+                  <span className="font-bold text-emerald-700 uppercase">{selectedPayMethod}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Razorpay Order ID:</span>
+                  <span className="font-mono text-slate-600 text-[11px]">{testOrderData.razorpayOrderId}</span>
+                </div>
+                <div className="flex justify-between border-t border-slate-200 pt-2 text-sm font-black text-slate-900">
+                  <span>Payable Amount:</span>
+                  <span className="text-emerald-700">₹{(testOrderData.amount / 100).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                This testing modal validates your HMAC payment signature verification, order status reconciliation, platform commissions, and automated tax invoices without real banking deductions.
+              </p>
+
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSimulatorModal(false);
+                    setShowUpiQrModal(true);
+                  }}
+                  className="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold text-xs transition flex items-center justify-center space-x-2"
+                >
+                  <QrCode className="w-4 h-4 text-emerald-600" />
+                  <span>Pay using UPI QR Code Flow</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSimulatePayment('success')}
+                  disabled={isProcessingPayment}
+                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold shadow-md shadow-emerald-500/20 transition flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  {isProcessingPayment ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Simulate Successful Payment</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSimulatePayment('failed')}
+                  disabled={isProcessingPayment}
+                  className="w-full py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-semibold transition"
+                >
+                  Simulate Bank Decline / Network Failure
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSimulatePayment('cancel')}
+                  disabled={isProcessingPayment}
+                  className="w-full py-2 text-slate-400 hover:text-slate-600 font-medium text-[11px]"
+                >
+                  Dismiss / Cancel Payment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPI QR Payment Modal */}
+      {showUpiQrModal && selectedOrder && (
+        <UpiQrPaymentModal
+          isOpen={showUpiQrModal}
+          orderId={selectedOrder.id}
+          orderNumber={selectedOrder.orderNumber}
+          totalAmount={selectedOrder.totalAmount}
+          onClose={() => setShowUpiQrModal(false)}
+          onPaymentSuccess={(updatedOrder) => {
+            setShowUpiQrModal(false);
+            setSelectedOrder((prev) => (prev ? { ...prev, ...updatedOrder, paymentStatus: 'paid' } : updatedOrder));
+            setPaymentSuccess(true);
+            loadOrders();
+          }}
+          onPaymentFailed={(errMsg) => {
+            setPaymentError(errMsg);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -9,9 +9,9 @@ export class PaymentController {
   static async createOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const customerId = req.user!.id;
-      const { orderId } = req.body;
+      const { orderId, paymentMethod } = req.body;
 
-      const data = await PaymentService.createPaymentOrder(customerId, orderId);
+      const data = await PaymentService.createPaymentOrder(customerId, orderId, paymentMethod);
       ApiResponse.success(res, data, 'Razorpay order created successfully', 201);
     } catch (error) {
       next(error);
@@ -24,12 +24,13 @@ export class PaymentController {
   static async verifyPayment(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const customerId = req.user!.id;
-      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, paymentMethod } = req.body;
 
       const result = await PaymentService.verifyPayment(customerId, {
         razorpay_order_id,
         razorpay_payment_id,
         razorpay_signature,
+        paymentMethod,
       });
 
       ApiResponse.success(
@@ -91,6 +92,66 @@ export class PaymentController {
           totalPages: result.totalPages,
         }
       );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/payments/create-qr-code
+   */
+  static async createQrCode(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const customerId = req.user!.id;
+      const { orderId } = req.body;
+
+      const data = await PaymentService.createUpiQrPayment(customerId, orderId);
+      ApiResponse.success(res, data, 'UPI QR Code generated successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/payments/qr-status/:orderId
+   */
+  static async getQrStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const customerId = req.user!.id;
+      const { orderId } = req.params;
+
+      const result = await PaymentService.getUpiQrStatus(customerId, orderId);
+      ApiResponse.success(res, result, 'UPI QR status retrieved successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/payments/cancel-qr
+   */
+  static async cancelQrCode(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const customerId = req.user!.id;
+      const { orderId } = req.body;
+
+      const result = await PaymentService.cancelUpiQrPayment(customerId, orderId);
+      ApiResponse.success(res, result, 'UPI QR payment session cancelled successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/payments/simulate-qr
+   */
+  static async simulateQrPayment(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const customerId = req.user!.id;
+      const { orderId, outcome } = req.body;
+
+      const result = await PaymentService.simulateUpiQrPayment(customerId, orderId, outcome);
+      ApiResponse.success(res, result, 'UPI QR payment simulation executed successfully', 200);
     } catch (error) {
       next(error);
     }

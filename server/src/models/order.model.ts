@@ -55,6 +55,7 @@ export interface IOrder {
   totalAmount: number;
   couponCode?: string;
   couponSnapshot?: ICouponSnapshot;
+  paymentMethod?: string;
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
   idempotencyKey?: string;
@@ -193,6 +194,13 @@ const orderSchema = new Schema<IOrder, OrderModel>(
       discountType: { type: String, enum: ['percentage', 'fixed'] },
       discountValue: { type: Number },
       discountAmount: { type: Number, default: 0 },
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['upi', 'upi_qr', 'card', 'netbanking', 'wallet', 'cod', 'razorpay'],
+      default: 'card',
+      trim: true,
+      index: true,
     },
     paymentStatus: {
       type: String,

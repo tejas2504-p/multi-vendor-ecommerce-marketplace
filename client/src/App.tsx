@@ -16,8 +16,8 @@ function AppContent() {
         <LandingPage />
       </MainLayout>
       <CartDrawer />
-      <AddressManagementModal />
       <CheckoutModal />
+      <AddressManagementModal />
       <CustomerOrdersModal isOpen={isOrdersModalOpen} onClose={closeOrdersModal} />
     </>
   );

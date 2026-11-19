@@ -253,6 +253,7 @@ export interface Order {
     discountValue: number;
     discountAmount: number;
   };
+  paymentMethod?: PaymentMethodType;
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   orderStatus:
     | 'pending'
@@ -266,7 +267,35 @@ export interface Order {
   createdAt: string;
 }
 
-export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded';
+export type PaymentMethodType = 'upi' | 'upi_qr' | 'card' | 'netbanking' | 'wallet' | 'cod' | 'razorpay';
+export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded' | 'expired';
+
+export interface UpiQrPaymentData {
+  qrId: string;
+  qrImageUrl: string;
+  qrString: string;
+  orderId: string;
+  orderNumber: string;
+  amount: number;
+  amountPaise: number;
+  currency: string;
+  expiresAt: string;
+  status: 'waiting' | 'paid' | 'failed' | 'expired';
+  isTestMode: boolean;
+  merchantVpa: string;
+  customer?: {
+    name: string;
+    phone: string;
+  };
+}
+
+export interface UpiQrStatusResponse {
+  status: 'waiting' | 'paid' | 'failed' | 'expired';
+  orderNumber?: string;
+  paymentId?: string;
+  failureReason?: string;
+  expiresAt?: string;
+}
 
 export interface Payment {
   id: string;
@@ -277,7 +306,7 @@ export interface Payment {
   razorpaySignature?: string;
   amount: number;
   currency: string;
-  paymentMethod?: string;
+  paymentMethod?: PaymentMethodType | string;
   status: PaymentStatus;
   failureReason?: string;
   verifiedAt?: string;
@@ -292,6 +321,7 @@ export interface RazorpayOrderData {
   currency: string;
   orderId: string;
   orderNumber: string;
+  paymentMethod?: string;
   customer: {
     name: string;
     phone: string;

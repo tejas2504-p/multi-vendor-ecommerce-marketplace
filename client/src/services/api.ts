@@ -9,6 +9,15 @@ export const apiClient = axios.create({
   },
 });
 
+// Attach JWT Bearer token from localStorage as fallback when cookies are restricted
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export const healthApi = {
   checkHealth: async (): Promise<HealthData> => {
     const response = await apiClient.get<ApiResponse<HealthData>>('/api/health');

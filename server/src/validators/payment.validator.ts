@@ -6,6 +6,7 @@ export const createPaymentOrderSchema = z.object({
   orderId: z
     .string({ required_error: 'Order ID is required' })
     .regex(mongoIdRegex, 'Invalid order ID format'),
+  paymentMethod: z.enum(['upi', 'upi_qr', 'card', 'netbanking', 'wallet', 'cod', 'razorpay']).optional(),
 });
 
 export const verifyPaymentSchema = z.object({
@@ -18,10 +19,24 @@ export const verifyPaymentSchema = z.object({
   razorpay_signature: z
     .string({ required_error: 'razorpay_signature is required' })
     .min(1, 'razorpay_signature cannot be empty'),
+  paymentMethod: z.enum(['upi', 'upi_qr', 'card', 'netbanking', 'wallet', 'cod', 'razorpay']).optional(),
+});
+
+export const createQrCodeSchema = z.object({
+  orderId: z
+    .string({ required_error: 'Order ID is required' })
+    .regex(mongoIdRegex, 'Invalid order ID format'),
+});
+
+export const simulateQrPaymentSchema = z.object({
+  orderId: z
+    .string({ required_error: 'Order ID is required' })
+    .regex(mongoIdRegex, 'Invalid order ID format'),
+  outcome: z.enum(['success', 'failed', 'expired']),
 });
 
 export const paymentFilterSchema = z.object({
-  status: z.enum(['pending', 'authorized', 'captured', 'failed', 'refunded']).optional(),
+  status: z.enum(['pending', 'authorized', 'captured', 'failed', 'refunded', 'expired']).optional(),
   customerId: z.string().regex(mongoIdRegex, 'Invalid customer ID format').optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -29,5 +44,7 @@ export const paymentFilterSchema = z.object({
 
 export type CreatePaymentOrderInput = z.infer<typeof createPaymentOrderSchema>;
 export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;
+export type CreateQrCodeInput = z.infer<typeof createQrCodeSchema>;
+export type SimulateQrPaymentInput = z.infer<typeof simulateQrPaymentSchema>;
 export type PaymentFilterInput = z.infer<typeof paymentFilterSchema>;
 

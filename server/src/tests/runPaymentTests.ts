@@ -515,8 +515,111 @@ async function runPaymentTestSuite() {
     assert.strictEqual(historyRes.body.data.currency, 'INR');
     console.log('✅ Test 12 Passed: Payment history accurately retrieved from MongoDB.');
 
+    // --------------------------------------------------------------------------
+    // Test 13: Dynamic UPI QR Code Generation
+    // --------------------------------------------------------------------------
+    console.log('\n⏳ Test 13: Generating genuine dynamic UPI QR code via POST /api/payments/create-qr-code...');
+    const orderQr = await Order.create({
+      orderNumber: 'ORD-TEST-UPI-QR',
+      userId: customer1._id,
+      customerId: customer1._id,
+      deliveryAddress: order1.deliveryAddress,
+      items: order1.items,
+      subtotal: 180,
+      shippingAmount: 0,
+      discountAmount: 0,
+      totalAmount: 180,
+      paymentStatus: 'pending',
+      orderStatus: 'confirmed',
+    });
+
+    const qrCreateRes = await request(app)
+      .post('/api/payments/create-qr-code')
+      .set('Cookie', customer1Cookies)
+      .send({ orderId: orderQr._id.toString() });
+
+    assert.strictEqual(qrCreateRes.status, 201);
+    assert.strictEqual(qrCreateRes.body.success, true);
+    assert.ok(qrCreateRes.body.data.qrImageUrl.startsWith('data:image/png;base64,'));
+    assert.ok(qrCreateRes.body.data.qrString.startsWith('upi://pay?pa='));
+    assert.strictEqual(qrCreateRes.body.data.amount, 180);
+    assert.strictEqual(qrCreateRes.body.data.status, 'waiting');
+    console.log('✅ Test 13 Passed: Dynamic UPI QR code generated with genuine NPCI URI and base64 image data.');
+
+    // --------------------------------------------------------------------------
+    // Test 14: Polling UPI QR Payment Status
+    // --------------------------------------------------------------------------
+    console.log('\n⏳ Test 14: Checking UPI QR status via GET /api/payments/qr-status/:orderId...');
+    const qrStatusRes = await request(app)
+      .get(`/api/payments/qr-status/${orderQr._id.toString()}`)
+      .set('Cookie', customer1Cookies);
+
+    assert.strictEqual(qrStatusRes.status, 200);
+    assert.strictEqual(qrStatusRes.body.data.status, 'waiting');
+    assert.strictEqual(qrStatusRes.body.data.orderNumber, 'ORD-TEST-UPI-QR');
+    console.log('✅ Test 14 Passed: UPI QR status polling returns waiting with expiration timer.');
+
+    // --------------------------------------------------------------------------
+    // Test 15: Simulating UPI QR Payment Capture & Verification
+    // --------------------------------------------------------------------------
+    console.log('\n⏳ Test 15: Simulating bank payment capture via POST /api/payments/simulate-qr...');
+    const qrSimRes = await request(app)
+      .post('/api/payments/simulate-qr')
+      .set('Cookie', customer1Cookies)
+      .send({ orderId: orderQr._id.toString(), outcome: 'success' });
+
+    assert.strictEqual(qrSimRes.status, 200);
+    assert.strictEqual(qrSimRes.body.data.status, 'paid');
+
+    const updatedQrOrder = await Order.findById(orderQr._id);
+    assert.strictEqual(updatedQrOrder?.paymentStatus, 'paid');
+    assert.strictEqual(updatedQrOrder?.paymentMethod, 'upi_qr');
+
+    const polledPaidRes = await request(app)
+      .get(`/api/payments/qr-status/${orderQr._id.toString()}`)
+      .set('Cookie', customer1Cookies);
+    assert.strictEqual(polledPaidRes.body.data.status, 'paid');
+    console.log('✅ Test 15 Passed: UPI QR payment verified on backend; order marked paid and reconciled.');
+
+    // --------------------------------------------------------------------------
+    // Test 16: Cancelling Pending UPI QR Session
+    // --------------------------------------------------------------------------
+    console.log('\n⏳ Test 16: Cancelling a pending UPI QR session via POST /api/payments/cancel-qr...');
+    const orderQrCancel = await Order.create({
+      orderNumber: 'ORD-TEST-QR-CANCEL',
+      userId: customer1._id,
+      customerId: customer1._id,
+      deliveryAddress: order1.deliveryAddress,
+      items: order1.items,
+      subtotal: 90,
+      shippingAmount: 0,
+      discountAmount: 0,
+      totalAmount: 90,
+      paymentStatus: 'pending',
+      orderStatus: 'confirmed',
+    });
+
+    await request(app)
+      .post('/api/payments/create-qr-code')
+      .set('Cookie', customer1Cookies)
+      .send({ orderId: orderQrCancel._id.toString() });
+
+    const cancelRes = await request(app)
+      .post('/api/payments/cancel-qr')
+      .set('Cookie', customer1Cookies)
+      .send({ orderId: orderQrCancel._id.toString() });
+
+    assert.strictEqual(cancelRes.status, 200);
+    assert.strictEqual(cancelRes.body.data.success, true);
+
+    const cancelledStatusRes = await request(app)
+      .get(`/api/payments/qr-status/${orderQrCancel._id.toString()}`)
+      .set('Cookie', customer1Cookies);
+    assert.strictEqual(cancelledStatusRes.body.data.status, 'failed');
+    console.log('✅ Test 16 Passed: UPI QR cancellation handled safely without corrupting order state.');
+
     console.log('\n======================================================');
-    console.log('🎉 ALL 12 RAZORPAY PAYMENT TESTS PASSED WITH 100% SUCCESS!');
+    console.log('🎉 ALL 16 RAZORPAY & UPI QR PAYMENT TESTS PASSED WITH 100% SUCCESS!');
     console.log('======================================================\n');
   } finally {
     await mongoose.disconnect();

@@ -1,6 +1,6 @@
 import { Schema, model, Model, Types, HydratedDocument } from 'mongoose';
 
-export type PaymentRecordStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded';
+export type PaymentRecordStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded' | 'expired';
 
 export interface IPayment {
   _id?: Types.ObjectId;
@@ -9,6 +9,10 @@ export interface IPayment {
   razorpayOrderId: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
+  razorpayQrId?: string;
+  qrImageUrl?: string;
+  qrString?: string;
+  qrExpiresAt?: Date;
   amount: number;
   currency: string;
   paymentMethod?: string;
@@ -54,6 +58,23 @@ const paymentSchema = new Schema<IPayment, PaymentModel>(
       type: String,
       trim: true,
     },
+    razorpayQrId: {
+      type: String,
+      trim: true,
+      sparse: true,
+      index: true,
+    },
+    qrImageUrl: {
+      type: String,
+      trim: true,
+    },
+    qrString: {
+      type: String,
+      trim: true,
+    },
+    qrExpiresAt: {
+      type: Date,
+    },
     amount: {
       type: Number,
       required: [true, 'Payment amount is required'],
@@ -70,10 +91,11 @@ const paymentSchema = new Schema<IPayment, PaymentModel>(
       type: String,
       trim: true,
       default: 'unknown',
+      index: true,
     },
     status: {
       type: String,
-      enum: ['pending', 'authorized', 'captured', 'failed', 'refunded'],
+      enum: ['pending', 'authorized', 'captured', 'failed', 'refunded', 'expired'],
       default: 'pending',
       index: true,
     },

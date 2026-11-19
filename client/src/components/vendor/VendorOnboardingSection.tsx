@@ -14,7 +14,7 @@ import { useApp } from '../../context/AppContext';
 import { authApi } from '../../services/auth.api';
 
 export const VendorOnboardingSection: React.FC = () => {
-  const { user, isAuthenticated, refreshUser, openAuthModal } = useApp();
+  const { user, isAuthenticated, refreshUser, openAuthModal, setActiveRole } = useApp();
 
   // Application form state
   const [storeName, setStoreName] = useState('');
@@ -98,6 +98,48 @@ export const VendorOnboardingSection: React.FC = () => {
       setApplyLoading(false);
     }
   };
+
+  // If logged in as Administrator
+  if (user?.role === 'admin') {
+    return (
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h2 className="text-lg font-bold text-slate-900">
+                  Platform Administrator View
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                  Admin
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                You are currently signed in as Super-Admin. Administrators oversee and verify seller applications rather than applying as merchants.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setActiveRole('admin')}
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-xs"
+          >
+            Open Admin Verification Desk →
+          </button>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 space-y-1">
+          <p className="font-semibold text-slate-800">Testing new merchant onboarding?</p>
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            To test submitting a new store application from scratch, register or log into a standard <strong>Customer</strong> account (e.g. <code className="text-slate-700">customer@example.com</code>). Customers can apply here, and you can switch back to Admin to approve them!
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // If already approved vendor
   if (user?.role === 'vendor' || applicationStatus?.status === 'approved') {
