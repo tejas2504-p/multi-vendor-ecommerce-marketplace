@@ -4,6 +4,19 @@ An enterprise-grade, Amazon-style multi-vendor e-commerce platform built with **
 
 ---
 
+## 📚 Technical Documentation & System Specifications
+
+Comprehensive architecture, database schemas, and API documentation prepared for evaluation and internship review:
+
+- 🏛️ **[System Architecture Documentation](docs/architecture.md)** — Core platform architecture, layered service design, role portals, security defense-in-depth, and cloud deployment topology.
+- 📐 **[System Architecture Diagrams](docs/architecture-diagram.md)** — High-level platform, RBAC flows, dual-token JWT lifecycle, multi-vendor order splitting, and deployment topology in Mermaid diagrams.
+- 🗄️ **[Database Schema Specification](docs/database-schema.md)** — Complete data dictionary covering all 20 Mongoose models, data types, constraints, and compound query indexes.
+- 📊 **[Database ER Diagram](docs/database-er-diagram.md)** — Visual Entity-Relationship diagram in Mermaid with relational cardinalities and data integrity rules.
+- 🔌 **[REST API Reference Documentation](docs/api-documentation.md)** — Complete endpoint catalog for Authentication, Products, Search, Cart, Orders, Payments, Reviews, Coupons, and Admin Analytics.
+- 📝 **[Individual Intern Reflection](docs/individual-intern-reflection.md)** — Individual internship reflections covering roles, modules implemented, technical hurdles, problem-solving, and skills gained for each team member.
+
+---
+
 ## 🛠️ Technology Stack
 
 | Layer | Technology | Purpose |
@@ -14,8 +27,8 @@ An enterprise-grade, Amazon-style multi-vendor e-commerce platform built with **
 | **Database** | MongoDB 7.0 + Mongoose 8.x | Primary document store for catalogs, orders, and users |
 | **Search Engine** | Elasticsearch 8.x (`@elastic/elasticsearch`) | Dedicated product search engine, edge n-gram analyzers & outbox sync |
 | **Media Storage**| AWS S3 (`@aws-sdk/client-s3`) + Multer | Private bucket asset management, pre-signed URLs, atomic rollback |
-| **Caching (Future Phase)** | Redis 7.2 | Distributed stock locks, session blacklist, rate limiting |
-| **Payments (Future Phase)** | Stripe Connect / Razorpay Route | Multi-party split payments and escrow payout engine |
+| **Caching** | Redis 7.2 (`ioredis`) | Cart caching, analytics cache invalidation, rate limiting |
+| **Payments** | Razorpay Gateway + Dynamic UPI QR | Cards, UPI, Netbanking, UPI QR, and webhook event deduplication |
 
 ---
 
@@ -24,8 +37,12 @@ An enterprise-grade, Amazon-style multi-vendor e-commerce platform built with **
 ```
 multi-vendor-marketplace/
 ├── docs/                          # Architectural specifications & API contracts
-│   ├── architecture.md            # Complete system design & database schemas
-│   └── api-planning.md            # REST API endpoint planning document
+│   ├── architecture.md            # Comprehensive system design & architecture
+│   ├── architecture-diagram.md    # Mermaid visual architecture workflows
+│   ├── database-schema.md         # Data dictionary for all 20 Mongoose models
+│   ├── database-er-diagram.md     # Mermaid Entity-Relationship diagram
+│   ├── api-documentation.md       # Complete REST API reference documentation
+│   └── individual-intern-reflection.md # Individual intern reflections & ownership
 ├── client/                        # Frontend application (React + Vite + Tailwind)
 │   ├── src/
 │   │   ├── components/            # Reusable UI primitives (Button, Card, Badge)
