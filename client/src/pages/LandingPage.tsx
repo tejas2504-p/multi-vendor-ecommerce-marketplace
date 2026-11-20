@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ProductSearchExperience } from '../components/search/ProductSearchExperience';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 // Lazy-loaded vendor and admin dashboard components for optimal code splitting
 const VendorOnboardingSection = React.lazy(() =>
@@ -245,7 +246,9 @@ export const LandingPage: React.FC = () => {
 
           {/* Full Catalog Search, Filter, & Shopping Experience */}
           <section className="space-y-4">
-            <ProductSearchExperience />
+            <ErrorBoundary fallbackTitle="Product Search & Discovery Unavailable">
+              <ProductSearchExperience />
+            </ErrorBoundary>
           </section>
 
           {/* Merchant Recruitment Banner */}
@@ -533,12 +536,16 @@ export const LandingPage: React.FC = () => {
             <Suspense fallback={<div className="p-12 text-center text-slate-400 font-medium animate-pulse">Loading administrative console...</div>}>
               {/* Executive Analytics Dashboard */}
               <div className="space-y-3">
-                <AdminAnalyticsDashboard />
+                <ErrorBoundary fallbackTitle="Executive Analytics Dashboard Unavailable">
+                  <AdminAnalyticsDashboard />
+                </ErrorBoundary>
               </div>
 
               {/* Merchant KYC & Store Verification Desk */}
               <div className="space-y-3">
-                <AdminVendorApplicationsManager />
+                <ErrorBoundary fallbackTitle="Merchant KYC Verification Desk Unavailable">
+                  <AdminVendorApplicationsManager />
+                </ErrorBoundary>
               </div>
 
               {/* Order Oversight & Dispute Management */}
@@ -547,7 +554,9 @@ export const LandingPage: React.FC = () => {
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                   <h2 className="text-lg font-bold text-slate-900">Platform Order Governance & Oversight</h2>
                 </div>
-                <AdminOrdersManager />
+                <ErrorBoundary fallbackTitle="Platform Orders Governance Unavailable">
+                  <AdminOrdersManager />
+                </ErrorBoundary>
               </div>
 
               {/* Platform Treasury & Merchant Payout Approvals */}
@@ -556,7 +565,9 @@ export const LandingPage: React.FC = () => {
                   <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
                   <h2 className="text-lg font-bold text-slate-900">Platform Commission Treasury & Payout Ledger</h2>
                 </div>
-                <AdminPayoutsManager />
+                <ErrorBoundary fallbackTitle="Treasury & Payouts Console Unavailable">
+                  <AdminPayoutsManager />
+                </ErrorBoundary>
               </div>
 
               {/* Review Moderation */}
@@ -565,7 +576,9 @@ export const LandingPage: React.FC = () => {
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
                   <h2 className="text-lg font-bold text-slate-900">Product Review Moderation Console</h2>
                 </div>
-                <AdminReviewsModerator />
+                <ErrorBoundary fallbackTitle="Product Review Moderation Console Unavailable">
+                  <AdminReviewsModerator />
+                </ErrorBoundary>
               </div>
 
               {/* Coupon & Promotional Engine */}
@@ -574,7 +587,9 @@ export const LandingPage: React.FC = () => {
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                   <h2 className="text-lg font-bold text-slate-900">Marketplace Promotional & Coupon Engine</h2>
                 </div>
-                <AdminCouponsManager />
+                <ErrorBoundary fallbackTitle="Coupon & Promotional Engine Unavailable">
+                  <AdminCouponsManager />
+                </ErrorBoundary>
               </div>
             </Suspense>
           )}

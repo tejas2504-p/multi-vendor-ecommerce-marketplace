@@ -214,25 +214,44 @@ export const AdminReviewsModerator: React.FC = () => {
               <tbody className="divide-y divide-slate-200">
                 {reviews.map((rev) => {
                   const revId = rev.id || rev._id;
+                  const productName =
+                    typeof rev.productId === 'object' && rev.productId !== null
+                      ? (rev.productId as any).name
+                      : rev.product?.name || (typeof rev.productId === 'string' ? `Product: ${rev.productId}` : 'Catalog Product');
+                  const productPrice =
+                    typeof rev.productId === 'object' && rev.productId !== null
+                      ? (rev.productId as any).price
+                      : rev.product?.price;
+                  const userName =
+                    typeof rev.userId === 'object' && rev.userId !== null
+                      ? (rev.userId as any).name
+                      : rev.user?.name || rev.author?.name || 'Verified Customer';
+                  const userEmail =
+                    typeof rev.userId === 'object' && rev.userId !== null
+                      ? (rev.userId as any).email
+                      : rev.user?.email || (typeof rev.userId === 'string' ? rev.userId : '');
+
                   return (
                     <tr key={revId} className="hover:bg-slate-50 transition">
                       <td className="py-3 px-4 max-w-[180px]">
                         <div className="font-bold text-slate-900 truncate">
-                          {rev.product?.name || `Product: ${rev.productId}`}
+                          {productName}
                         </div>
-                        {rev.product?.price && (
+                        {productPrice !== undefined && (
                           <div className="text-slate-400 text-[11px]">
-                            ${Number(rev.product.price).toFixed(2)}
+                            ${Number(productPrice).toFixed(2)}
                           </div>
                         )}
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="font-semibold text-slate-800">
-                          {rev.user?.name || rev.author?.name || 'Verified Customer'}
+                          {userName}
                         </div>
-                        <div className="text-[11px] text-slate-400 font-mono">
-                          {rev.user?.email || rev.userId}
-                        </div>
+                        {userEmail && (
+                          <div className="text-[11px] text-slate-400 font-mono">
+                            {userEmail}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center space-x-1">

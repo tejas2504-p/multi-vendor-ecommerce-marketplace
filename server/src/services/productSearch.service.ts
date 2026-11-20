@@ -2,6 +2,7 @@ import { getElasticsearchClient, ELASTICSEARCH_INDEX } from '../config/elastic.c
 import { IndexedProductDocument } from './productIndexing.service';
 import { SearchProductsQuery } from '../validators/productSearch.validator';
 import { Product } from '../models/product.model';
+import { Category } from '../models/category.model';
 import { AppError } from '../utils/apiError';
 import { logger } from '../utils/logger';
 
@@ -248,6 +249,23 @@ export class ProductSearchService {
 
       const products: IndexedProductDocument[] = (response.hits?.hits || []).map((hit: any) => {
         const source = hit._source as IndexedProductDocument;
+        let images = source.images || [];
+        if (!images || images.length === 0) {
+          const n = (source.name || '').toLowerCase();
+          if (n.includes('laptop') || n.includes('book') || n.includes('computer')) {
+            images = ['/images/products/novabook-pro-16.jpg'];
+          } else if (n.includes('phone') || n.includes('tablet') || n.includes('pad')) {
+            images = ['/images/products/apex-phone-15-pro.jpg'];
+          } else if (n.includes('watch') || n.includes('fitness') || n.includes('band')) {
+            images = ['/images/products/beta-smartwatch-ultra.jpg'];
+          } else if (n.includes('keyboard') || n.includes('mouse') || n.includes('gaming')) {
+            images = ['/images/products/vortex-mechanical-keyboard.jpg'];
+          } else if (n.includes('earbud') || n.includes('pulse') || n.includes('buds')) {
+            images = ['/images/products/pulsebuds-anc.jpg'];
+          } else {
+            images = ['/images/products/alpha-studio-monitor-pro.jpg'];
+          }
+        }
         return {
           productId: source.productId || hit._id,
           name: source.name,
@@ -260,7 +278,7 @@ export class ProductSearchService {
           stock: source.stock,
           rating: source.rating,
           status: source.status,
-          images: source.images || [],
+          images,
           sku: source.sku,
           createdAt: source.createdAt,
           updatedAt: source.updatedAt,
@@ -276,6 +294,23 @@ export class ProductSearchService {
           count: bucket.doc_count,
         }))
         .filter((c: SearchFilterCategory) => Boolean(c.id));
+
+      // Resolve human-readable category names if any returned as raw ObjectIds
+      if (categories.some((c) => /^[0-9a-fA-F]{24}$/.test(c.name))) {
+        try {
+          const catDocs = await Category.find({}, 'name slug').lean();
+          const map = new Map(catDocs.map((doc: any) => [doc._id.toString(), doc.name]));
+          for (const c of categories) {
+            if (map.has(c.id)) {
+              c.name = map.get(c.id)!;
+            } else if (map.has(c.name)) {
+              c.name = map.get(c.name)!;
+            }
+          }
+        } catch (e: any) {
+          logger.warn(`Category label resolution error: ${e.message}`);
+        }
+      }
 
       const brandBuckets = response.aggregations?.brands?.buckets || [];
       const brands: SearchFilterBrand[] = brandBuckets

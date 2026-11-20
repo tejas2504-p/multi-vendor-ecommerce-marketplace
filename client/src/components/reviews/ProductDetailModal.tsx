@@ -18,6 +18,26 @@ interface ProductDetailModalProps {
   onClose: () => void;
 }
 
+const getProductFallbackImage = (name: string): string => {
+  const n = (name || '').toLowerCase();
+  if (n.includes('laptop') || n.includes('book') || n.includes('computer') || n.includes('monitor')) {
+    return '/images/products/novabook-pro-16.jpg';
+  }
+  if (n.includes('phone') || n.includes('tablet') || n.includes('pad')) {
+    return '/images/products/apex-phone-15-pro.jpg';
+  }
+  if (n.includes('watch') || n.includes('fitness') || n.includes('band')) {
+    return '/images/products/beta-smartwatch-ultra.jpg';
+  }
+  if (n.includes('keyboard') || n.includes('mouse') || n.includes('gaming')) {
+    return '/images/products/vortex-mechanical-keyboard.jpg';
+  }
+  if (n.includes('earbud') || n.includes('pulse') || n.includes('buds')) {
+    return '/images/products/pulsebuds-anc.jpg';
+  }
+  return '/images/products/alpha-studio-monitor-pro.jpg';
+};
+
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   product,
   onClose,
@@ -30,8 +50,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   if (!product) return null;
 
   const isOutOfStock = product.stock <= 0;
-  const images = product.images && product.images.length > 0 ? product.images : [];
-  const currentImage = images[selectedImageIndex];
+  const rawImages = product.images && product.images.length > 0 ? product.images : [];
+  const normalizedImages = rawImages
+    .map((img: any) => (typeof img === 'string' ? img : img?.key || img?.url))
+    .filter(Boolean);
+  const images = normalizedImages.length > 0 ? normalizedImages : [getProductFallbackImage(product.name)];
+  const currentImage = images[selectedImageIndex] || images[0];
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
@@ -83,6 +107,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     src={currentImage}
                     alt={product.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      const fallback = getProductFallbackImage(product.name);
+                      if (!target.src.endsWith(fallback)) {
+                        target.src = fallback;
+                      }
+                    }}
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center text-slate-400">
@@ -136,7 +167,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <span>•</span>
                   <span className="flex items-center space-x-1">
                     <Store className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Vendor ID: {product.vendorId.slice(-6)}</span>
+                    <span>Vendor ID: {typeof product.vendorId === 'string' ? product.vendorId.slice(-6) : 'N/A'}</span>
                   </span>
                 </div>
 

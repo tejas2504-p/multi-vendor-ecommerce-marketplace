@@ -9,13 +9,35 @@ interface ProductGridCardProps {
   onSelect?: (product: IndexedProduct) => void;
 }
 
+const getProductFallbackImage = (name: string): string => {
+  const n = (name || '').toLowerCase();
+  if (n.includes('laptop') || n.includes('book') || n.includes('computer') || n.includes('monitor')) {
+    return '/images/products/novabook-pro-16.jpg';
+  }
+  if (n.includes('phone') || n.includes('tablet') || n.includes('pad')) {
+    return '/images/products/apex-phone-15-pro.jpg';
+  }
+  if (n.includes('watch') || n.includes('fitness') || n.includes('band')) {
+    return '/images/products/beta-smartwatch-ultra.jpg';
+  }
+  if (n.includes('keyboard') || n.includes('mouse') || n.includes('gaming')) {
+    return '/images/products/vortex-mechanical-keyboard.jpg';
+  }
+  if (n.includes('earbud') || n.includes('pulse') || n.includes('buds')) {
+    return '/images/products/pulsebuds-anc.jpg';
+  }
+  return '/images/products/alpha-studio-monitor-pro.jpg';
+};
+
 export const ProductGridCard: React.FC<ProductGridCardProps> = ({ product, onSelect }) => {
   const { addToCart } = useCart();
   const { isAuthenticated, openAuthModal } = useApp();
   const [isAdding, setIsAdding] = useState(false);
 
   const isOutOfStock = product.stock <= 0;
-  const imageUrl = product.images?.[0];
+  const rawImage = product.images?.[0];
+  const extractedUrl = typeof rawImage === 'string' ? rawImage : (rawImage as any)?.key || (rawImage as any)?.url;
+  const imageUrl = extractedUrl || getProductFallbackImage(product.name);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -46,8 +68,11 @@ export const ProductGridCard: React.FC<ProductGridCardProps> = ({ product, onSel
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
-              // Fallback to placeholder if image fails to load
-              (e.target as HTMLElement).style.display = 'none';
+              const target = e.target as HTMLImageElement;
+              const fallback = getProductFallbackImage(product.name);
+              if (!target.src.endsWith(fallback)) {
+                target.src = fallback;
+              }
             }}
           />
         ) : (

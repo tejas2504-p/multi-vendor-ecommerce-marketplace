@@ -24,7 +24,8 @@ export const AdminVendorApplicationsManager: React.FC = () => {
     setFeedbackMessage(null);
     try {
       const res = await authApi.listAdminVendorApplications('pending');
-      setApplications(res.data?.applications || []);
+      const list = Array.isArray(res.data) ? res.data : (res.data?.applications || []);
+      setApplications(list);
     } catch {
       setApplications([]);
     } finally {
@@ -128,83 +129,86 @@ export const AdminVendorApplicationsManager: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {applications.map((app) => (
-            <div
-              key={app._id}
-              className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition space-y-4"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200/80">
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <h3 className="font-bold text-slate-900 text-sm">{app.storeName}</h3>
-                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold uppercase">
-                      Pending Audit
-                    </span>
+          {applications.map((app) => {
+            const appId = app.id || app._id;
+            return (
+              <div
+                key={appId}
+                className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition space-y-4"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200/80">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-bold text-slate-900 text-sm">{app.storeName}</h3>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold uppercase">
+                        Pending Audit
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{app.description || 'No description provided'}</p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{app.description || 'No description provided'}</p>
-                </div>
 
-                <span className="text-[11px] text-slate-400">
-                  Applied {new Date(app.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-600">
-                <div className="flex items-center space-x-2">
-                  <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span className="truncate">{app.businessEmail}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>{app.businessPhone}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span className="truncate">
-                    {app.businessAddress?.city}, {app.businessAddress?.state}, {app.businessAddress?.country}
+                  <span className="text-[11px] text-slate-400">
+                    Applied {new Date(app.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-              </div>
 
-              {/* Actions */}
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/80">
-                <input
-                  type="text"
-                  placeholder="Rejection reason if declining..."
-                  value={rejectionReasons[app._id] || ''}
-                  onChange={(e) =>
-                    setRejectionReasons({ ...rejectionReasons, [app._id]: e.target.value })
-                  }
-                  className="w-full sm:w-80 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-600">
+                  <div className="flex items-center space-x-2">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="truncate">{app.businessEmail}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>{app.businessPhone}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="truncate">
+                      {app.businessAddress?.city}, {app.businessAddress?.state}, {app.businessAddress?.country}
+                    </span>
+                  </div>
+                </div>
 
-                <div className="flex items-center space-x-2 w-full sm:w-auto">
-                  <button
-                    onClick={() => handleReject(app._id)}
-                    disabled={processingId === app._id}
-                    className="flex-1 sm:flex-none px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-semibold border border-rose-200 transition"
-                  >
-                    Reject
-                  </button>
+                {/* Actions */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/80">
+                  <input
+                    type="text"
+                    placeholder="Rejection reason if declining..."
+                    value={rejectionReasons[appId] || ''}
+                    onChange={(e) =>
+                      setRejectionReasons({ ...rejectionReasons, [appId]: e.target.value })
+                    }
+                    className="w-full sm:w-80 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl"
+                  />
 
-                  <button
-                    onClick={() => handleApprove(app._id)}
-                    disabled={processingId === app._id}
-                    className="flex-1 sm:flex-none px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-xs"
-                  >
-                    {processingId === app._id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <>
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        <span>Approve Merchant</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center space-x-2 w-full sm:w-auto">
+                    <button
+                      onClick={() => handleReject(appId)}
+                      disabled={processingId === appId}
+                      className="flex-1 sm:flex-none px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-semibold border border-rose-200 transition"
+                    >
+                      Reject
+                    </button>
+
+                    <button
+                      onClick={() => handleApprove(appId)}
+                      disabled={processingId === appId}
+                      className="flex-1 sm:flex-none px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-xs"
+                    >
+                      {processingId === appId ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>Approve Merchant</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

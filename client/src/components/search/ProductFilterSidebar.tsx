@@ -17,6 +17,24 @@ interface ProductFilterSidebarProps {
   onClearAll: () => void;
 }
 
+const KNOWN_CATEGORY_NAMES: Record<string, string> = {
+  '6aff5459a8cde2e4994f1ea7': 'Beauty',
+  '6aff556ffdfc00ec2458ebea': 'Fragrances',
+  '6afc85513c7acadaaab5934a': 'Audio & Headphones',
+  '6afc85513c7acadaaab59333': 'Smart Wearables',
+  '6afc85513c7acadaaab59354': 'Laptops & Computers',
+  '6afc85513c7acadaaab59358': 'Smartphones & Tablets',
+  '6afc85513c7acadaaab5935b': 'PC & Gaming Gear',
+  '6afc85513c7acadaaab5935e': 'Smart Home & IoT',
+};
+
+const formatCategoryDisplayName = (name: string, id: string): string => {
+  if (KNOWN_CATEGORY_NAMES[id]) return KNOWN_CATEGORY_NAMES[id];
+  if (KNOWN_CATEGORY_NAMES[name]) return KNOWN_CATEGORY_NAMES[name];
+  if (/^[0-9a-fA-F]{24}$/.test(name)) return 'Specialty Gear';
+  return name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
 export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
   availableFilters,
   appliedFilters,
@@ -165,7 +183,7 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
                       : 'text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  <span className="truncate">{cat.name}</span>
+                  <span className="truncate">{formatCategoryDisplayName(cat.name, cat.id)}</span>
                   <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 ml-2">
                     {cat.count}
                   </span>

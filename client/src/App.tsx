@@ -6,12 +6,13 @@ import { CartDrawer } from './components/cart/CartDrawer';
 import { AddressManagementModal } from './components/address/AddressManagementModal';
 import { CheckoutModal } from './components/checkout/CheckoutModal';
 import { CustomerOrdersModal } from './components/orders/CustomerOrdersModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 function AppContent() {
   const { isOrdersModalOpen, closeOrdersModal } = useCart();
 
   return (
-    <>
+    <ErrorBoundary fallbackTitle="NexusMarket Application Error">
       <MainLayout>
         <LandingPage />
       </MainLayout>
@@ -19,7 +20,7 @@ function AppContent() {
       <CheckoutModal />
       <AddressManagementModal />
       <CustomerOrdersModal isOpen={isOrdersModalOpen} onClose={closeOrdersModal} />
-    </>
+    </ErrorBoundary>
   );
 }
 

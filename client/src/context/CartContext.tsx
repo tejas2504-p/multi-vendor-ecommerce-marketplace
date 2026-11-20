@@ -98,7 +98,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const itemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
+  const itemCount = cart?.items && Array.isArray(cart.items)
+    ? cart.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+    : 0;
 
   return (
     <CartContext.Provider

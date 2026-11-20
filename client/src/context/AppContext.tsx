@@ -35,7 +35,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsLoadingAuth(true);
       const profile = await authApi.getMe();
       setUser(profile);
-      if (profile?.role) {
+      const hasSearchQuery = typeof window !== 'undefined' && window.location.search.includes('q=');
+      if (profile?.role && !hasSearchQuery) {
         setActiveRole(profile.role);
       }
     } catch {
